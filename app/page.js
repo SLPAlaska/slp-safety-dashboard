@@ -41,6 +41,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="header">
         <div className="header-left">
+          <img src="/Logo.png" alt="SLP Alaska Logo" style={{height: '60px', marginRight: '15px'}} />
           <div>
             <h1>Predictive Safety Analytics</h1>
             <div className="header-subtitle">Real-Time Leading & Lagging Indicators</div>
