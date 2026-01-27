@@ -91,7 +91,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <>
-            {/* Score Cards */}
+            {/* Score Cards - Row 1 */}
             <div className="score-row">
               <div className={`score-card sci`}>
                 <div className="score-label">Safety Culture Index</div>
@@ -153,6 +153,15 @@ export default function Dashboard() {
                   {(d.laggingIndicators?.openIncidents || 0) + (d.laggingIndicators?.sailOpen || 0)}
                 </div>
                 <div className="score-detail">{d.laggingIndicators?.sailOverdue || 0} overdue</div>
+              </div>
+
+              {/* NEW: Lead/Lag Ratio Score Card */}
+              <div className={`score-card leadlag`}>
+                <div className="score-label">📊 Lead/Lag Ratio</div>
+                <div className={`score-value ${(d.leadLagRatio || 0) >= 10 ? 'good' : (d.leadLagRatio || 0) >= 5 ? 'warning' : 'danger'}`}>
+                  {d.leadLagRatio || 0}:1
+                </div>
+                <div className="score-detail">Target: 10:1+</div>
               </div>
 
               {d.trueCostSummary?.hasData && (
@@ -241,6 +250,10 @@ export default function Dashboard() {
               <div className="panel">
                 <div className="panel-header">📈 Leading Indicators</div>
                 <div className="panel-content">
+                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#052e16', borderRadius: '8px'}}>
+                    <div style={{fontSize: '24px', fontWeight: 700, color: '#22c55e'}}>{d.totalLeadingIndicators || 0}</div>
+                    <div style={{fontSize: '9px', color: '#86efac', textTransform: 'uppercase'}}>Total Leading Activities</div>
+                  </div>
                   <div className="metrics-grid">
                     <div className="metric"><div className="metric-label">HSE Contacts</div><div className="metric-value green">{d.leadingIndicators?.hseContacts || 0}</div></div>
                     <div className="metric"><div className="metric-label">THA/JSAs</div><div className="metric-value green">{d.leadingIndicators?.thas || 0}</div></div>
@@ -248,6 +261,8 @@ export default function Dashboard() {
                     <div className="metric"><div className="metric-label">Toolbox Meetings</div><div className="metric-value green">{d.leadingIndicators?.toolboxMeetings || 0}</div></div>
                     <div className="metric"><div className="metric-label">STOP & Take 5</div><div className="metric-value green">{d.leadingIndicators?.stopTake5 || 0}</div></div>
                     <div className="metric"><div className="metric-label">Risk Conversations</div><div className="metric-value green">{d.leadingIndicators?.riskConversations || 0}</div></div>
+                    <div className="metric"><div className="metric-label">MBWA</div><div className="metric-value green">{d.leadingIndicators?.mbwa || 0}</div></div>
+                    <div className="metric"><div className="metric-label">EHS Field Evals</div><div className="metric-value green">{d.leadingIndicators?.ehsFieldEvals || 0}</div></div>
                   </div>
                 </div>
               </div>
@@ -256,6 +271,10 @@ export default function Dashboard() {
               <div className="panel">
                 <div className="panel-header">📉 Lagging Indicators</div>
                 <div className="panel-content">
+                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#450a0a', borderRadius: '8px'}}>
+                    <div style={{fontSize: '24px', fontWeight: 700, color: '#ef4444'}}>{d.totalLaggingIndicators || 0}</div>
+                    <div style={{fontSize: '9px', color: '#fca5a5', textTransform: 'uppercase'}}>Total Lagging Events</div>
+                  </div>
                   <div style={{marginBottom: '10px'}}>
                     <div style={{fontSize: '10px', color: '#64748b', marginBottom: '6px'}}>INCIDENTS</div>
                     <div className="status-row">
@@ -289,6 +308,62 @@ export default function Dashboard() {
                     <div className="metric"><div className="metric-label">Over 30 Days</div><div className="metric-value yellow">{d.aging?.over30Days || 0}</div></div>
                     <div className="metric"><div className="metric-label">Over 60 Days</div><div className="metric-value orange">{d.aging?.over60Days || 0}</div></div>
                     <div className="metric"><div className="metric-label">Over 90 Days</div><div className="metric-value red">{d.aging?.over90Days || 0}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* NEW: LSR Audit Summary Panel */}
+              <div className="panel">
+                <div className="panel-header lsr-header">🛡️ LSR Audit Summary</div>
+                <div className="panel-content">
+                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#1e1b4b', borderRadius: '8px'}}>
+                    <div style={{fontSize: '24px', fontWeight: 700, color: '#818cf8'}}>{d.lsrAuditCounts?.total || 0}</div>
+                    <div style={{fontSize: '9px', color: '#a5b4fc', textTransform: 'uppercase'}}>Total LSR Audits</div>
+                  </div>
+                  <div className="metrics-grid">
+                    <div className="metric"><div className="metric-label">Confined Space</div><div className="metric-value purple">{d.lsrAuditCounts?.confinedSpace || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Driving</div><div className="metric-value purple">{d.lsrAuditCounts?.driving || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Energy Isolation</div><div className="metric-value purple">{d.lsrAuditCounts?.energyIsolation || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Fall Protection</div><div className="metric-value purple">{d.lsrAuditCounts?.fallProtection || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Lifting Ops</div><div className="metric-value purple">{d.lsrAuditCounts?.liftingOperations || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Line of Fire</div><div className="metric-value purple">{d.lsrAuditCounts?.lineOfFire || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Work Permits</div><div className="metric-value purple">{d.lsrAuditCounts?.workPermits || 0}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* NEW: Inspections Summary Panel */}
+              <div className="panel">
+                <div className="panel-header inspection-header">🔍 Inspections Summary</div>
+                <div className="panel-content">
+                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#164e63', borderRadius: '8px'}}>
+                    <div style={{fontSize: '24px', fontWeight: 700, color: '#22d3ee'}}>{d.totalInspections || 0}</div>
+                    <div style={{fontSize: '9px', color: '#67e8f9', textTransform: 'uppercase'}}>Total Inspections</div>
+                  </div>
+                  <div style={{fontSize: '10px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase'}}>Monthly Equipment</div>
+                  <div className="metrics-grid" style={{marginBottom: '10px'}}>
+                    <div className="metric"><div className="metric-label">Fire Ext.</div><div className="metric-value cyan">{d.inspectionCounts?.fireExtinguisher || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Eyewash</div><div className="metric-value cyan">{d.inspectionCounts?.eyewash || 0}</div></div>
+                    <div className="metric"><div className="metric-label">First Aid</div><div className="metric-value cyan">{d.inspectionCounts?.firstAid || 0}</div></div>
+                    <div className="metric"><div className="metric-label">AED</div><div className="metric-value cyan">{d.inspectionCounts?.aed || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Ladders</div><div className="metric-value cyan">{d.inspectionCounts?.ladder || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Harness</div><div className="metric-value cyan">{d.inspectionCounts?.harness || 0}</div></div>
+                  </div>
+                  <div style={{fontSize: '10px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase'}}>Rigging & Lifting</div>
+                  <div className="metrics-grid" style={{marginBottom: '10px'}}>
+                    <div className="metric"><div className="metric-label">Lanyard/SRL</div><div className="metric-value cyan">{d.inspectionCounts?.lanyard || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Shackles</div><div className="metric-value cyan">{d.inspectionCounts?.shackle || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Slings</div><div className="metric-value cyan">{d.inspectionCounts?.sling || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Wire Rope</div><div className="metric-value cyan">{d.inspectionCounts?.wireRope || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Chain Hoist</div><div className="metric-value cyan">{d.inspectionCounts?.chainHoist || 0}</div></div>
+                  </div>
+                  <div style={{fontSize: '10px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase'}}>Vehicles & Equipment</div>
+                  <div className="metrics-grid">
+                    <div className="metric"><div className="metric-label">Vehicles</div><div className="metric-value cyan">{d.inspectionCounts?.vehicle || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Forklifts</div><div className="metric-value cyan">{d.inspectionCounts?.forklift || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Cranes</div><div className="metric-value cyan">{d.inspectionCounts?.crane || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Heavy Equip</div><div className="metric-value cyan">{d.inspectionCounts?.heavyEquip || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Scaffolds</div><div className="metric-value cyan">{d.inspectionCounts?.scaffold || 0}</div></div>
                   </div>
                 </div>
               </div>
@@ -348,7 +423,7 @@ export default function Dashboard() {
             </div>
 
             <div className="last-updated">
-              Last Updated: {d.timestamp ? new Date(d.timestamp).toLocaleString() : 'N/A'} | Cache age: {d.cacheAge || 0} minutes
+              Last Updated: {d.timestamp ? new Date(d.timestamp).toLocaleString() : 'N/A'} | {d.fromCache ? `Cache age: ${d.cacheAge || 0} minutes` : 'Live data'}
             </div>
           </>
         )}
