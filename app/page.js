@@ -16,6 +16,42 @@ function formatMoney(amount) {
   return '$' + Math.round(amount).toLocaleString()
 }
 
+// Trend Arrow Component
+function TrendArrow({ trend, goodDirection = 'up' }) {
+  if (!trend || trend.direction === 'flat') {
+    return <span className="trend-arrow flat">→</span>
+  }
+  const isGood = (trend.direction === goodDirection)
+  const arrow = trend.direction === 'up' ? '↑' : '↓'
+  return (
+    <span className={`trend-arrow ${isGood ? 'good' : 'bad'}`} title={`${trend.percent}% ${trend.direction}`}>
+      {arrow} {trend.percent}%
+    </span>
+  )
+}
+
+// Engagement Alert Component
+function EngagementAlert({ metrics }) {
+  if (!metrics || metrics.engagementStatus === 'active') return null
+  
+  const alerts = {
+    'no-data': { icon: '🚫', text: 'No submissions recorded', color: '#64748b' },
+    'critical': { icon: '🚨', text: `No activity in ${metrics.daysSinceLastSubmission} days!`, color: '#ef4444' },
+    'warning': { icon: '⚠️', text: `${metrics.daysSinceLastSubmission} days since last submission`, color: '#f97316' },
+    'moderate': { icon: '📋', text: `${metrics.daysSinceLastSubmission} days since last activity`, color: '#eab308' }
+  }
+  
+  const alert = alerts[metrics.engagementStatus]
+  if (!alert) return null
+  
+  return (
+    <div className="engagement-alert" style={{ background: `${alert.color}22`, borderColor: alert.color }}>
+      <span>{alert.icon}</span>
+      <span>{alert.text}</span>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -85,6 +121,9 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* Engagement Alert Banner */}
+      {d && <EngagementAlert metrics={d.engagementMetrics} />}
+
       <div className="container">
         {loading ? (
           <div className="loading">
@@ -116,8 +155,20 @@ export default function Dashboard() {
                 <div className="score-detail">Lower is better</div>
               </div>
 
+              {/* NEW: 30-Day Risk Forecast */}
+              <div className={`score-card forecast`}>
+                <div className="score-label">🔮 30-Day Forecast</div>
+                <div className={`score-value ${d.riskForecast30Day <= 30 ? 'good' : d.riskForecast30Day <= 60 ? 'warning' : 'danger'}`}>
+                  {d.riskForecast30Day || 0}
+                </div>
+                <div className="score-detail">Predicted risk level</div>
+              </div>
+
               <div className={`score-card safe`}>
-                <div className="score-label">Safe/At-Risk Ratio</div>
+                <div className="score-label">
+                  Safe/At-Risk Ratio
+                  <TrendArrow trend={d.trends?.safeRatio} goodDirection="up" />
+                </div>
                 <div className={`score-value ${d.bbsMetrics?.safeRatio >= 5 ? 'good' : d.bbsMetrics?.safeRatio >= 2 ? 'warning' : 'danger'}`}>
                   {d.bbsMetrics?.safeRatio || 0}:1
                 </div>
@@ -133,7 +184,10 @@ export default function Dashboard() {
               </div>
 
               <div className={`score-card sif`}>
-                <div className="score-label">⚠️ SIF Potential Rate</div>
+                <div className="score-label">
+                  ⚠️ SIF Potential Rate
+                  <TrendArrow trend={d.trends?.sifRate} goodDirection="down" />
+                </div>
                 <div className={`score-value ${d.sifMetrics?.sifPotentialRate <= 10 ? 'good' : d.sifMetrics?.sifPotentialRate <= 25 ? 'warning' : 'danger'}`}>
                   {d.sifMetrics?.sifPotentialRate || 0}%
                 </div>
@@ -175,6 +229,52 @@ export default function Dashboard() {
 
             {/* Main Grid */}
             <div className="main-grid">
+              {/* NEW: Engagement & Activity Panel */}
+              <div className="panel">
+                <div className="panel-header engagement-header">👥 Engagement & Activity</div>
+                <div className="panel-content">
+                  <div className="engagement-stats">
+                    <div className="engagement-stat">
+                      <div className={`engagement-value ${d.engagementMetrics?.engagementStatus === 'active' ? 'good' : d.engagementMetrics?.engagementStatus === 'moderate' ? 'warning' : 'danger'}`}>
+                        {d.engagementMetrics?.daysSinceLastSubmission ?? '—'}
+                      </div>
+                      <div className="engagement-label">Days Since Last Activity</div>
+                    </div>
+                    <div className="engagement-stat">
+                      <div className="engagement-value neutral">{d.engagementMetrics?.uniqueSubmitters || 0}</div>
+                      <div className="engagement-label">Active Submitters</div>
+                    </div>
+                    {d.engagementMetrics?.participationRate !== null && (
+                      <div className="engagement-stat">
+                        <div className={`engagement-value ${d.engagementMetrics?.participationRate >= 50 ? 'good' : d.engagementMetrics?.participationRate >= 25 ? 'warning' : 'danger'}`}>
+                          {d.engagementMetrics?.participationRate}%
+                        </div>
+                        <div className="engagement-label">Participation Rate</div>
+                      </div>
+                    )}
+                  </div>
+                  {d.engagementMetrics?.employeeCount && (
+                    <div style={{textAlign: 'center', fontSize: '10px', color: '#64748b', marginTop: '8px'}}>
+                      {d.engagementMetrics?.uniqueSubmitters} of {d.engagementMetrics?.employeeCount} employees have submitted
+                    </div>
+                  )}
+                  <div className="metrics-grid" style={{marginTop: '12px'}}>
+                    <div className="metric">
+                      <div className="metric-label">Last 7 Days</div>
+                      <div className={`metric-value ${d.engagementMetrics?.submissionsLast7Days > 0 ? 'green' : 'red'}`}>
+                        {d.engagementMetrics?.submissionsLast7Days || 0}
+                      </div>
+                    </div>
+                    <div className="metric">
+                      <div className="metric-label">Last 30 Days</div>
+                      <div className={`metric-value ${d.engagementMetrics?.submissionsLast30Days > 0 ? 'green' : 'red'}`}>
+                        {d.engagementMetrics?.submissionsLast30Days || 0}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Energy Source Analytics */}
               <div className="panel">
                 <div className="panel-header energy-header">⚡ Energy Source Analytics</div>
@@ -218,7 +318,10 @@ export default function Dashboard() {
 
               {/* BBS Observations */}
               <div className="panel">
-                <div className="panel-header">📊 BBS Observations</div>
+                <div className="panel-header">
+                  📊 BBS Observations
+                  <TrendArrow trend={d.trends?.atRiskBehaviors} goodDirection="down" />
+                </div>
                 <div className="panel-content">
                   <div className="bbs-ratio">
                     <div className="ratio-item"><div className="ratio-value" style={{color: '#22c55e'}}>{d.bbsMetrics?.safe || 0}</div><div className="ratio-label">Safe</div></div>
@@ -234,7 +337,10 @@ export default function Dashboard() {
 
               {/* Leading Indicators */}
               <div className="panel">
-                <div className="panel-header">📈 Leading Indicators</div>
+                <div className="panel-header">
+                  📈 Leading Indicators
+                  <TrendArrow trend={d.trends?.leadingActivities} goodDirection="up" />
+                </div>
                 <div className="panel-content">
                   <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#064e3b', borderRadius: '8px'}}>
                     <div style={{fontSize: '24px', fontWeight: 700, color: '#10b981'}}>{d.totalLeadingIndicators || 0}</div>
@@ -255,7 +361,10 @@ export default function Dashboard() {
 
               {/* Lagging Indicators */}
               <div className="panel">
-                <div className="panel-header">📉 Lagging Indicators</div>
+                <div className="panel-header">
+                  📉 Lagging Indicators
+                  <TrendArrow trend={d.trends?.incidents} goodDirection="down" />
+                </div>
                 <div className="panel-content">
                   <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#7f1d1d', borderRadius: '8px'}}>
                     <div style={{fontSize: '24px', fontWeight: 700, color: '#fca5a5'}}>{d.totalLaggingIndicators || 0}</div>
