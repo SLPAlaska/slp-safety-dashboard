@@ -17,6 +17,10 @@ body { font-family: Roboto, sans-serif; background: #0a0f1a; color: #e2e8f0; min
 .refresh-btn:hover { opacity: 0.9; }
 .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+/* Print Button */
+.print-btn { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; }
+.print-btn:hover { opacity: 0.9; }
+
 .year-banner { background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); padding: 6px 12px; text-align: center; font-size: 11px; color: #94a3b8; border-bottom: 1px solid #334155; }
 .year-banner strong { color: #f97316; font-size: 13px; }
 
@@ -126,9 +130,6 @@ body { font-family: Roboto, sans-serif; background: #0a0f1a; color: #e2e8f0; min
 .category-name { color: #94a3b8; }
 
 .footer { text-align: center; padding: 20px 10px; margin-top: 30px; border-top: 1px solid #334155; font-size: 10px; color: #64748b; }
-/* ============================================================================
-   ADD THESE STYLES TO YOUR globals.css FILE
-   ============================================================================ */
 
 /* Lead/Lag Ratio Score Card */
 .score-card.leadlag {
@@ -155,7 +156,7 @@ body { font-family: Roboto, sans-serif; background: #0a0f1a; color: #e2e8f0; min
   color: #22d3ee;
 }
 
-/* Energy type colors - add these CSS variables if not already present */
+/* Energy type colors */
 :root {
   --color-gravity: #ef4444;
   --color-motion: #f97316;
@@ -165,4 +166,277 @@ body { font-family: Roboto, sans-serif; background: #0a0f1a; color: #e2e8f0; min
   --color-chemical: #14b8a6;
   --color-temperature: #3b82f6;
   --color-stored: #8b5cf6;
+}
+
+/* ============================================================================
+   PRINT STYLES
+   ============================================================================ */
+@media print {
+  /* Reset background for printing */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  
+  body {
+    background: white !important;
+    color: #1e293b !important;
+    font-size: 9px !important;
+  }
+  
+  /* Hide interactive elements */
+  .filters,
+  .refresh-btn,
+  .print-btn,
+  .cache-indicator,
+  .spinner,
+  .loading {
+    display: none !important;
+  }
+  
+  /* Header adjustments */
+  .header {
+    position: relative !important;
+    background: white !important;
+    border-bottom: 2px solid #f97316 !important;
+    padding: 8px 15px !important;
+  }
+  
+  .header h1 {
+    font-size: 16px !important;
+  }
+  
+  .header-subtitle {
+    font-size: 8px !important;
+  }
+  
+  /* Year banner - make it prominent */
+  .year-banner {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+    padding: 8px !important;
+    font-size: 11px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+  
+  .year-banner strong {
+    color: #f97316 !important;
+  }
+  
+  /* Container */
+  .container {
+    padding: 10px !important;
+    max-width: 100% !important;
+  }
+  
+  /* Score cards */
+  .score-row {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr) !important;
+    gap: 8px !important;
+    margin-bottom: 12px !important;
+  }
+  
+  .score-card {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 8px !important;
+    border-radius: 6px !important;
+    page-break-inside: avoid !important;
+  }
+  
+  .score-label {
+    font-size: 7px !important;
+    color: #64748b !important;
+  }
+  
+  .score-value {
+    font-size: 20px !important;
+  }
+  
+  .score-value.good { color: #16a34a !important; }
+  .score-value.warning { color: #ca8a04 !important; }
+  .score-value.danger { color: #dc2626 !important; }
+  .score-value.neutral { color: #ea580c !important; }
+  
+  .score-detail {
+    font-size: 7px !important;
+  }
+  
+  /* Main grid */
+  .main-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 10px !important;
+  }
+  
+  /* Panels */
+  .panel {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 6px !important;
+    page-break-inside: avoid !important;
+  }
+  
+  .panel-header {
+    background: #f1f5f9 !important;
+    color: #1e293b !important;
+    padding: 6px 10px !important;
+    font-size: 10px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+  
+  .panel-header.sif-header {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+  }
+  
+  .panel-header.energy-header {
+    background: #f5f3ff !important;
+    color: #7c3aed !important;
+  }
+  
+  .panel-header.lsr-header {
+    background: #eef2ff !important;
+    color: #4f46e5 !important;
+  }
+  
+  .panel-header.inspection-header {
+    background: #ecfeff !important;
+    color: #0891b2 !important;
+  }
+  
+  .panel-content {
+    padding: 8px !important;
+  }
+  
+  /* Metrics */
+  .metric {
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 6px !important;
+  }
+  
+  .metric-label {
+    font-size: 7px !important;
+  }
+  
+  .metric-value {
+    font-size: 16px !important;
+  }
+  
+  .metric-value.green { color: #16a34a !important; }
+  .metric-value.red { color: #dc2626 !important; }
+  .metric-value.yellow { color: #ca8a04 !important; }
+  .metric-value.orange { color: #ea580c !important; }
+  .metric-value.blue { color: #2563eb !important; }
+  .metric-value.teal { color: #0d9488 !important; }
+  .metric-value.purple { color: #7c3aed !important; }
+  .metric-value.cyan { color: #0891b2 !important; }
+  
+  /* BBS Ratio */
+  .bbs-ratio {
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+  
+  .ratio-value {
+    font-size: 20px !important;
+  }
+  
+  /* Status items */
+  .status-item {
+    background: white !important;
+    border: 1px solid #e2e8f0 !important;
+  }
+  
+  /* SIF Rate Display */
+  .sif-rate-display {
+    background: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+  }
+  
+  .sif-rate-value {
+    font-size: 28px !important;
+    color: #dc2626 !important;
+  }
+  
+  .sif-rate-label {
+    color: #dc2626 !important;
+  }
+  
+  /* Energy bars */
+  .energy-bar {
+    background: #e2e8f0 !important;
+  }
+  
+  .energy-bar-label span:first-child {
+    color: #475569 !important;
+  }
+  
+  .energy-bar-label span:last-child {
+    color: #7c3aed !important;
+  }
+  
+  /* Tables */
+  .data-table {
+    font-size: 8px !important;
+  }
+  
+  .data-table th {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    padding: 4px 6px !important;
+  }
+  
+  .data-table td {
+    padding: 4px 6px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+  }
+  
+  .scrollable {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  
+  /* Badges */
+  .badge-open {
+    background: #fef2f2 !important;
+    color: #dc2626 !important;
+  }
+  
+  .days-critical {
+    background: #dc2626 !important;
+    color: white !important;
+  }
+  
+  .days-warning {
+    background: #ca8a04 !important;
+    color: white !important;
+  }
+  
+  .days-ok {
+    background: #16a34a !important;
+    color: white !important;
+  }
+  
+  /* Footer */
+  .footer {
+    margin-top: 15px !important;
+    padding: 10px !important;
+    border-top: 1px solid #e2e8f0 !important;
+    font-size: 8px !important;
+    color: #64748b !important;
+  }
+  
+  .last-updated {
+    font-size: 8px !important;
+    color: #64748b !important;
+  }
+  
+  /* Page setup */
+  @page {
+    size: landscape;
+    margin: 0.5in;
+  }
 }

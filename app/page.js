@@ -34,6 +34,10 @@ export default function Dashboard() {
     loadData()
   }, [year, company, location])
 
+  const handlePrint = () => {
+    window.print()
+  }
+
   const d = data
 
   return (
@@ -67,12 +71,15 @@ export default function Dashboard() {
             </select>
           </div>
           <button className="refresh-btn" onClick={loadData}>🔄 Refresh</button>
+          <button className="print-btn" onClick={handlePrint}>🖨️ Print</button>
         </div>
       </div>
 
       {/* Year Banner */}
       <div className="year-banner">
         Showing data for: <strong>{year === 'All' ? 'All Time' : year}</strong>
+        {company !== 'All' && <> | Company: <strong>{company}</strong></>}
+        {location !== 'All' && <> | Location: <strong>{location}</strong></>}
         {d && d.fromCache && (
           <span className="cache-indicator cached">⚡ Cached ({d.cacheAge}m ago)</span>
         )}
@@ -127,7 +134,7 @@ export default function Dashboard() {
 
               <div className={`score-card sif`}>
                 <div className="score-label">⚠️ SIF Potential Rate</div>
-                <div className={`score-value ${(d.sifMetrics?.sifPotentialRate || 0) <= 10 ? 'good' : (d.sifMetrics?.sifPotentialRate || 0) <= 25 ? 'warning' : 'danger'}`}>
+                <div className={`score-value ${d.sifMetrics?.sifPotentialRate <= 10 ? 'good' : d.sifMetrics?.sifPotentialRate <= 25 ? 'warning' : 'danger'}`}>
                   {d.sifMetrics?.sifPotentialRate || 0}%
                 </div>
                 <div className="score-detail">{d.sifMetrics?.sifPotentialCount || 0} of {d.sifMetrics?.totalEvents || 0} events</div>
@@ -135,42 +142,35 @@ export default function Dashboard() {
 
               <div className={`score-card energy`}>
                 <div className="score-label">🛡️ Control Quality</div>
-                <div className={`score-value ${(d.energySourceMetrics?.controlHierarchyScore || 0) >= 70 ? 'good' : (d.energySourceMetrics?.controlHierarchyScore || 0) >= 50 ? 'warning' : 'danger'}`}>
+                <div className={`score-value ${d.energySourceMetrics?.controlHierarchyScore >= 60 ? 'good' : d.energySourceMetrics?.controlHierarchyScore >= 40 ? 'warning' : 'danger'}`}>
                   {d.energySourceMetrics?.controlHierarchyScore || 0}
                 </div>
                 <div className="score-detail">Higher = better controls</div>
               </div>
 
-              <div className={`score-card danger`}>
+              <div className={`score-card safe`}>
                 <div className="score-label">Near Misses</div>
-                <div className="score-value neutral">{d.nearMissMetrics?.totalReported || 0}</div>
+                <div className={`score-value ${d.nearMissMetrics?.totalReported >= 5 ? 'good' : d.nearMissMetrics?.totalReported >= 2 ? 'warning' : 'neutral'}`}>
+                  {d.nearMissMetrics?.totalReported || 0}
+                </div>
                 <div className="score-detail">More = better culture</div>
               </div>
 
-              <div className={`score-card danger`}>
+              <div className={`score-card ${d.aging?.over30Days > 0 ? 'danger' : 'safe'}`}>
                 <div className="score-label">Open Items</div>
-                <div className={`score-value ${(d.laggingIndicators?.openIncidents || 0) + (d.laggingIndicators?.sailOpen || 0) === 0 ? 'good' : 'danger'}`}>
-                  {(d.laggingIndicators?.openIncidents || 0) + (d.laggingIndicators?.sailOpen || 0)}
+                <div className={`score-value ${(d.laggingIndicators?.sailOpen + d.laggingIndicators?.openIncidents) === 0 ? 'good' : 'warning'}`}>
+                  {(d.laggingIndicators?.sailOpen || 0) + (d.laggingIndicators?.openIncidents || 0)}
                 </div>
                 <div className="score-detail">{d.laggingIndicators?.sailOverdue || 0} overdue</div>
               </div>
 
-              {/* NEW: Lead/Lag Ratio Score Card */}
               <div className={`score-card leadlag`}>
                 <div className="score-label">📊 Lead/Lag Ratio</div>
-                <div className={`score-value ${(d.leadLagRatio || 0) >= 10 ? 'good' : (d.leadLagRatio || 0) >= 5 ? 'warning' : 'danger'}`}>
+                <div className={`score-value ${d.leadLagRatio >= 10 ? 'good' : d.leadLagRatio >= 5 ? 'warning' : 'danger'}`}>
                   {d.leadLagRatio || 0}:1
                 </div>
                 <div className="score-detail">Target: 10:1+</div>
               </div>
-
-              {d.trueCostSummary?.hasData && (
-                <div className={`score-card cost`}>
-                  <div className="score-label">💰 Incident Costs</div>
-                  <div className="score-value money">{formatMoney(d.trueCostSummary?.totalCosts || 0)}</div>
-                  <div className="score-detail">{d.trueCostSummary?.incidentsCosted || 0} incidents</div>
-                </div>
-              )}
             </div>
 
             {/* Main Grid */}
@@ -179,54 +179,40 @@ export default function Dashboard() {
               <div className="panel">
                 <div className="panel-header energy-header">⚡ Energy Source Analytics</div>
                 <div className="panel-content">
-                  {d.energySourceMetrics?.totalObservations > 0 ? (
-                    <>
-                      <div style={{textAlign: 'center', marginBottom: '12px', padding: '10px', background: '#0f172a', borderRadius: '8px'}}>
-                        <div style={{fontSize: '28px', fontWeight: 700, color: '#a78bfa'}}>{d.energySourceMetrics.totalObservations}</div>
-                        <div style={{fontSize: '9px', color: '#64748b', textTransform: 'uppercase'}}>Energy Sources Identified</div>
+                  <div style={{textAlign: 'center', marginBottom: '12px'}}>
+                    <div style={{fontSize: '28px', fontWeight: 700, color: '#a78bfa'}}>{d.energySourceMetrics?.totalObservations || 0}</div>
+                    <div style={{fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase'}}>Energy Sources Identified</div>
+                  </div>
+                  <div style={{fontSize: '10px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase'}}>Energy Types Encountered</div>
+                  {Object.entries(d.energySourceMetrics?.byEnergyType || {}).map(([type, count]) => (
+                    <div key={type} className="energy-bar-container">
+                      <div className="energy-bar-label"><span>{type}</span><span>{count}</span></div>
+                      <div className="energy-bar">
+                        <div className="energy-bar-fill" style={{
+                          width: `${Math.min(100, (count / Math.max(...Object.values(d.energySourceMetrics?.byEnergyType || {1:1}))) * 100)}%`,
+                          background: type === 'Gravity' ? '#ef4444' : type === 'Motion' ? '#f97316' : type === 'Mechanical' ? '#eab308' : type === 'Electrical' ? '#facc15' : type === 'Pressure' ? '#22c55e' : type === 'Chemical' ? '#14b8a6' : type === 'Temperature' ? '#3b82f6' : '#8b5cf6'
+                        }}></div>
                       </div>
-                      <div style={{marginBottom: '12px'}}>
-                        <div style={{fontSize: '10px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase'}}>Energy Types Encountered</div>
-                        {['Gravity', 'Motion', 'Mechanical', 'Electrical', 'Pressure', 'Chemical', 'Temperature', 'Stored'].map(type => {
-                          const count = d.energySourceMetrics.byEnergyType?.[type] || 0
-                          const maxEnergy = Math.max(...Object.values(d.energySourceMetrics.byEnergyType || {1: 1}))
-                          const pct = maxEnergy > 0 ? (count / maxEnergy * 100) : 0
-                          return (
-                            <div key={type} className="energy-bar-container">
-                              <div className="energy-bar-label"><span>{type}</span><span>{count}</span></div>
-                              <div className="energy-bar"><div className="energy-bar-fill" style={{width: `${pct}%`, background: `var(--color-${type.toLowerCase()}, #a78bfa)`}}></div></div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{textAlign: 'center', padding: '30px', color: '#64748b'}}>No energy source data available yet.</div>
-                  )}
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* SIF Potential */}
+              {/* SIF Potential Analytics */}
               <div className="panel">
                 <div className="panel-header sif-header">☠️ SIF Potential (STKY) Analytics</div>
                 <div className="panel-content">
-                  {d.sifMetrics?.totalEvents > 0 ? (
-                    <>
-                      <div className="sif-rate-display">
-                        <div className="sif-rate-value">{d.sifMetrics.sifPotentialRate}%</div>
-                        <div className="sif-rate-label">SIF Potential Rate</div>
-                        <div style={{fontSize: '11px', color: '#94a3b8', marginTop: '4px'}}>{d.sifMetrics.sifPotentialCount} of {d.sifMetrics.totalEvents} events had SIF potential</div>
-                      </div>
-                      <div className="metrics-grid" style={{marginBottom: '12px'}}>
-                        <div className="metric"><div className="metric-label">✓ Effective</div><div className="metric-value green">{d.sifMetrics.directControlStatus?.effective || 0}</div></div>
-                        <div className="metric"><div className="metric-label">✗ Failed</div><div className="metric-value red">{d.sifMetrics.directControlStatus?.failed || 0}</div></div>
-                        <div className="metric"><div className="metric-label">⚠ Alt Only</div><div className="metric-value yellow">{d.sifMetrics.directControlStatus?.alternativeOnly || 0}</div></div>
-                        <div className="metric"><div className="metric-label">✗ None</div><div className="metric-value red">{d.sifMetrics.directControlStatus?.none || 0}</div></div>
-                      </div>
-                    </>
-                  ) : (
-                    <div style={{textAlign: 'center', padding: '30px', color: '#64748b'}}>No SIF potential data available yet.</div>
-                  )}
+                  <div className="sif-rate-display">
+                    <div className="sif-rate-value">{d.sifMetrics?.sifPotentialRate || 0}%</div>
+                    <div className="sif-rate-label">SIF Potential Rate</div>
+                    <div style={{fontSize: '11px', color: '#94a3b8', marginTop: '4px'}}>{d.sifMetrics?.sifPotentialCount || 0} of {d.sifMetrics?.totalEvents || 0} events had SIF potential</div>
+                  </div>
+                  <div className="metrics-grid">
+                    <div className="metric"><div className="metric-label">✓ Effective</div><div className="metric-value green">{d.sifMetrics?.directControlStatus?.effective || 0}</div></div>
+                    <div className="metric"><div className="metric-label">✗ Failed</div><div className="metric-value red">{d.sifMetrics?.directControlStatus?.failed || 0}</div></div>
+                    <div className="metric"><div className="metric-label">⚠ Alt Only</div><div className="metric-value yellow">{d.sifMetrics?.directControlStatus?.alternativeOnly || 0}</div></div>
+                    <div className="metric"><div className="metric-label">✗ None</div><div className="metric-value red">{d.sifMetrics?.directControlStatus?.none || 0}</div></div>
+                  </div>
                 </div>
               </div>
 
@@ -240,8 +226,8 @@ export default function Dashboard() {
                     <div className="ratio-item"><div className="ratio-value" style={{color: '#ef4444'}}>{d.bbsMetrics?.atRisk || 0}</div><div className="ratio-label">At-Risk</div></div>
                   </div>
                   <div className="metrics-grid">
-                    <div className="metric"><div className="metric-label">Total Observations</div><div className="metric-value blue">{d.bbsMetrics?.total || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Job Stops</div><div className="metric-value orange">{d.bbsMetrics?.jobStops || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Total Observations</div><div className="metric-value orange">{d.bbsMetrics?.total || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Job Stops</div><div className="metric-value red">{d.bbsMetrics?.jobStops || 0}</div></div>
                   </div>
                 </div>
               </div>
@@ -250,19 +236,19 @@ export default function Dashboard() {
               <div className="panel">
                 <div className="panel-header">📈 Leading Indicators</div>
                 <div className="panel-content">
-                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#052e16', borderRadius: '8px'}}>
-                    <div style={{fontSize: '24px', fontWeight: 700, color: '#22c55e'}}>{d.totalLeadingIndicators || 0}</div>
-                    <div style={{fontSize: '9px', color: '#86efac', textTransform: 'uppercase'}}>Total Leading Activities</div>
+                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#064e3b', borderRadius: '8px'}}>
+                    <div style={{fontSize: '24px', fontWeight: 700, color: '#10b981'}}>{d.totalLeadingIndicators || 0}</div>
+                    <div style={{fontSize: '9px', color: '#6ee7b7', textTransform: 'uppercase'}}>Total Leading Activities</div>
                   </div>
                   <div className="metrics-grid">
-                    <div className="metric"><div className="metric-label">HSE Contacts</div><div className="metric-value green">{d.leadingIndicators?.hseContacts || 0}</div></div>
-                    <div className="metric"><div className="metric-label">THA/JSAs</div><div className="metric-value green">{d.leadingIndicators?.thas || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Safety Meetings</div><div className="metric-value green">{d.leadingIndicators?.safetyMeetings || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Toolbox Meetings</div><div className="metric-value green">{d.leadingIndicators?.toolboxMeetings || 0}</div></div>
-                    <div className="metric"><div className="metric-label">STOP & Take 5</div><div className="metric-value green">{d.leadingIndicators?.stopTake5 || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Risk Conversations</div><div className="metric-value green">{d.leadingIndicators?.riskConversations || 0}</div></div>
-                    <div className="metric"><div className="metric-label">MBWA</div><div className="metric-value green">{d.leadingIndicators?.mbwa || 0}</div></div>
-                    <div className="metric"><div className="metric-label">EHS Field Evals</div><div className="metric-value green">{d.leadingIndicators?.ehsFieldEvals || 0}</div></div>
+                    <div className="metric"><div className="metric-label">HSE Contacts</div><div className="metric-value teal">{d.leadingIndicators?.hseContacts || 0}</div></div>
+                    <div className="metric"><div className="metric-label">THA/JSAs</div><div className="metric-value teal">{d.leadingIndicators?.thas || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Safety Meetings</div><div className="metric-value teal">{d.leadingIndicators?.safetyMeetings || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Toolbox Meetings</div><div className="metric-value teal">{d.leadingIndicators?.toolboxMeetings || 0}</div></div>
+                    <div className="metric"><div className="metric-label">STOP & Take 5</div><div className="metric-value teal">{d.leadingIndicators?.stopTake5 || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Risk Conversations</div><div className="metric-value teal">{d.leadingIndicators?.riskConversations || 0}</div></div>
+                    <div className="metric"><div className="metric-label">MBWA</div><div className="metric-value teal">{d.leadingIndicators?.mbwa || 0}</div></div>
+                    <div className="metric"><div className="metric-label">EHS Field Evals</div><div className="metric-value teal">{d.leadingIndicators?.ehsFieldEvals || 0}</div></div>
                   </div>
                 </div>
               </div>
@@ -271,30 +257,26 @@ export default function Dashboard() {
               <div className="panel">
                 <div className="panel-header">📉 Lagging Indicators</div>
                 <div className="panel-content">
-                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#450a0a', borderRadius: '8px'}}>
-                    <div style={{fontSize: '24px', fontWeight: 700, color: '#ef4444'}}>{d.totalLaggingIndicators || 0}</div>
-                    <div style={{fontSize: '9px', color: '#fca5a5', textTransform: 'uppercase'}}>Total Lagging Events</div>
+                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#7f1d1d', borderRadius: '8px'}}>
+                    <div style={{fontSize: '24px', fontWeight: 700, color: '#fca5a5'}}>{d.totalLaggingIndicators || 0}</div>
+                    <div style={{fontSize: '9px', color: '#fecaca', textTransform: 'uppercase'}}>Total Lagging Events</div>
                   </div>
-                  <div style={{marginBottom: '10px'}}>
-                    <div style={{fontSize: '10px', color: '#64748b', marginBottom: '6px'}}>INCIDENTS</div>
-                    <div className="status-row">
-                      <div className="status-item open"><div className="metric-value red">{d.laggingIndicators?.openIncidents || 0}</div><div className="metric-label">Open</div></div>
-                      <div className="status-item closed"><div className="metric-value green">{d.laggingIndicators?.closedIncidents || 0}</div><div className="metric-label">Closed</div></div>
-                    </div>
+                  <div style={{fontSize: '10px', color: '#64748b', marginBottom: '6px', textTransform: 'uppercase'}}>Incidents</div>
+                  <div className="status-row" style={{marginBottom: '10px'}}>
+                    <div className="status-item open"><div className="metric-value red">{d.laggingIndicators?.openIncidents || 0}</div><div className="metric-label">Open</div></div>
+                    <div className="status-item closed"><div className="metric-value green">{d.laggingIndicators?.closedIncidents || 0}</div><div className="metric-label">Closed</div></div>
                   </div>
-                  <div className="metrics-grid">
+                  <div className="metrics-grid" style={{marginBottom: '10px'}}>
                     <div className="metric"><div className="metric-label">First Aid</div><div className="metric-value yellow">{d.laggingIndicators?.firstAid || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Recordable</div><div className="metric-value red">{d.laggingIndicators?.recordable || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Recordable</div><div className="metric-value orange">{d.laggingIndicators?.recordable || 0}</div></div>
                     <div className="metric"><div className="metric-label">Lost Time</div><div className="metric-value red">{d.laggingIndicators?.lostTime || 0}</div></div>
                     <div className="metric"><div className="metric-label">Property Damage</div><div className="metric-value orange">{d.laggingIndicators?.propertyDamage || 0}</div></div>
                   </div>
-                  <div style={{marginTop: '10px'}}>
-                    <div style={{fontSize: '10px', color: '#64748b', marginBottom: '6px'}}>SAIL LOG</div>
-                    <div className="status-row">
-                      <div className="status-item open"><div className="metric-value red">{d.laggingIndicators?.sailOpen || 0}</div><div className="metric-label">Open</div></div>
-                      <div className="status-item critical"><div className="metric-value red">{d.laggingIndicators?.sailCritical || 0}</div><div className="metric-label">Critical</div></div>
-                      <div className="status-item overdue"><div className="metric-value orange">{d.laggingIndicators?.sailOverdue || 0}</div><div className="metric-label">Overdue</div></div>
-                    </div>
+                  <div style={{fontSize: '10px', color: '#64748b', marginBottom: '6px', textTransform: 'uppercase'}}>SAIL Log</div>
+                  <div className="status-row">
+                    <div className="status-item open"><div className="metric-value red">{d.laggingIndicators?.sailOpen || 0}</div><div className="metric-label">Open</div></div>
+                    <div className="status-item critical"><div className="metric-value red">{d.laggingIndicators?.sailCritical || 0}</div><div className="metric-label">Critical</div></div>
+                    <div className="status-item overdue"><div className="metric-value orange">{d.laggingIndicators?.sailOverdue || 0}</div><div className="metric-label">Overdue</div></div>
                   </div>
                 </div>
               </div>
@@ -304,7 +286,7 @@ export default function Dashboard() {
                 <div className="panel-header">⏰ Aging Metrics</div>
                 <div className="panel-content">
                   <div className="metrics-grid">
-                    <div className="metric"><div className="metric-label">Avg Days Open</div><div className="metric-value orange">{d.aging?.avgDaysOpen || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Avg Days Open</div><div className="metric-value blue">{d.aging?.avgDaysOpen || 0}</div></div>
                     <div className="metric"><div className="metric-label">Over 30 Days</div><div className="metric-value yellow">{d.aging?.over30Days || 0}</div></div>
                     <div className="metric"><div className="metric-label">Over 60 Days</div><div className="metric-value orange">{d.aging?.over60Days || 0}</div></div>
                     <div className="metric"><div className="metric-label">Over 90 Days</div><div className="metric-value red">{d.aging?.over90Days || 0}</div></div>
@@ -312,7 +294,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* NEW: LSR Audit Summary Panel */}
+              {/* LSR Audit Summary Panel */}
               <div className="panel">
                 <div className="panel-header lsr-header">🛡️ LSR Audit Summary</div>
                 <div className="panel-content">
@@ -332,7 +314,7 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* NEW: Inspections Summary Panel */}
+              {/* Inspections Summary Panel */}
               <div className="panel">
                 <div className="panel-header inspection-header">🔍 Inspections Summary</div>
                 <div className="panel-content">
