@@ -123,12 +123,17 @@ async function getCompanyData(companyName: string, startDate: string, endDate: s
 }
 
 // Generate HTML email - Dashboard Style
-function generateEmailHTML(companyName: string, data: any, dateRange: any) {
+function generateEmailHTML(companyName: string, data: any, dateRange: any, companyToken: string) {
   const m = data.metrics
   
   // Calculate additional metrics
   const safeRatioNum = parseFloat(m.safeRatio) || 0
   const jobStopRate = m.totalBBS > 0 ? Math.round((m.jobStops / m.totalBBS) * 100) : 0
+  
+  // Secure dashboard link
+  const dashboardLink = companyToken 
+    ? `https://slp-safety-dashboard.vercel.app/view/${companyToken}`
+    : 'https://slp-safety-dashboard.vercel.app'
 
   return `
 <!DOCTYPE html>
@@ -440,10 +445,12 @@ function generateEmailHTML(companyName: string, data: any, dateRange: any) {
 
     <!-- Footer -->
     <div class="footer">
-      <div class="brand">SLP Alaska Safety Management</div>
-      <p>View your full interactive dashboard at <a href="https://slp-safety.vercel.app">slp-safety.vercel.app</a></p>
-      <p style="margin-top: 12px; font-size: 11px;">
+      <p>View your full interactive dashboard at:<br><a href="${dashboardLink}" style="color: #5eead4; font-size: 14px; font-weight: 600;">${dashboardLink}</a></p>
+      <p style="margin-top: 16px; font-size: 11px;">
         Please do not reply to this email. For questions, contact brian@slpalaska.com
+      </p>
+      <p style="margin-top: 16px; font-size: 10px; color: #64748b;">
+        Powered by Predictive Safety Analytics™ © 2026 SLP Alaska, LLC
       </p>
     </div>
   </div>
@@ -461,7 +468,7 @@ async function sendEmail(to: string[], subject: string, html: string) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'SLP Safety Reports <onboarding@resend.dev>',
+      from: 'SLP Safety Reports <reports@slpalaska.com>',
       to,
       subject,
       html
@@ -489,6 +496,17 @@ serve(async (req) => {
 
     if (error) throw error
 
+    // Get company tokens
+    const { data: tokens } = await supabase
+      .from('company_view_tokens')
+      .select('company_name, token')
+      .eq('is_active', true)
+
+    const tokenMap = new Map<string, string>()
+    for (const t of tokens || []) {
+      tokenMap.set(t.company_name, t.token)
+    }
+
     // Group recipients by company
     const companiesMap = new Map<string, string[]>()
     for (const r of recipients || []) {
@@ -503,7 +521,7 @@ serve(async (req) => {
     // TEST MODE: Only send to Brian for review
     // Set to false to send to actual recipients
     // =========================================================
-    const TEST_MODE = true
+    const TEST_MODE = false
     const TEST_EMAIL = 'brian@slpalaska.com'
 
     // Helper function to add delay between API calls
@@ -524,11 +542,14 @@ serve(async (req) => {
           ? [TEST_EMAIL] 
           : [...emails, 'brian@slpalaska.com']
 
+        // Get company token for secure link
+        const companyToken = tokenMap.get(companyName) || ''
+
         // Get company data
         const data = await getCompanyData(companyName, dateRange.start, dateRange.end)
 
         // Generate email
-        const html = generateEmailHTML(companyName, data, dateRange)
+        const html = generateEmailHTML(companyName, data, dateRange, companyToken)
         const subject = `Weekly Safety Report - ${companyName} (${dateRange.startFormatted} - ${dateRange.endFormatted})`
 
         // Send email
