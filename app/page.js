@@ -52,8 +52,73 @@ function EngagementAlert({ metrics }) {
   )
 }
 
+// TrueCost Trend Graph Component
+function TrueCostTrendGraph({ monthlyData }) {
+  if (!monthlyData || monthlyData.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '40px', color: '#94a3b8' }}>
+        No cost data available for the selected period
+      </div>
+    )
+  }
+
+  const maxCost = Math.max(...monthlyData.map(d => d.total))
+  const chartHeight = 200
+
+  return (
+    <div style={{ position: 'relative', height: `${chartHeight + 40}px` }}>
+      {/* Y-axis labels */}
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 40, width: '60px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
+        <div>{formatMoney(maxCost)}</div>
+        <div>{formatMoney(maxCost * 0.75)}</div>
+        <div>{formatMoney(maxCost * 0.5)}</div>
+        <div>{formatMoney(maxCost * 0.25)}</div>
+        <div>$0</div>
+      </div>
+
+      {/* Chart area */}
+      <div style={{ marginLeft: '70px', marginRight: '10px', height: chartHeight, position: 'relative', borderBottom: '2px solid #e2e8f0', borderLeft: '2px solid #e2e8f0' }}>
+        {monthlyData.map((item, index) => {
+          const barHeight = maxCost > 0 ? (item.total / maxCost) * chartHeight : 0
+          const barWidth = `${(1 / monthlyData.length) * 90}%`
+          
+          return (
+            <div
+              key={index}
+              style={{
+                position: 'absolute',
+                bottom: 0,
+                left: `${(index / monthlyData.length) * 100}%`,
+                width: barWidth,
+                height: `${barHeight}px`,
+                background: 'linear-gradient(180deg, #dc2626 0%, #991b1b 100%)',
+                borderRadius: '4px 4px 0 0',
+                cursor: 'pointer',
+                transition: 'opacity 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+              title={`${item.month}: ${formatMoney(item.total)}\nDirect: ${formatMoney(item.direct)}\nIndirect: ${formatMoney(item.indirect)}`}
+            />
+          )
+        })}
+      </div>
+
+      {/* X-axis labels */}
+      <div style={{ marginLeft: '70px', marginTop: '5px', display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
+        {monthlyData.map((item, index) => (
+          <div key={index} style={{ flex: 1, textAlign: 'center' }}>
+            {item.month}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [data, setData] = useState(null)
+  const [trueCostData, setTrueCostData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [year, setYear] = useState(String(currentYear))
   const [company, setCompany] = useState('All')
@@ -61,9 +126,95 @@ export default function Dashboard() {
 
   const loadData = async () => {
     setLoading(true)
+    
+    // Load main dashboard data
     const result = await getDashboardData(company, location, year)
     setData(result)
+    
+    // Load TrueCost data
+    await loadTrueCostData()
+    
     setLoading(false)
+  }
+
+  const loadTrueCostData = async () => {
+    try {
+      // Build query for incident_costs
+      let query = supabase
+        .from('incident_costs')
+        .select(`
+          total_all_costs,
+          total_direct_costs,
+          total_indirect_costs,
+          entry_date,
+          incident_id,
+          incidents!inner(company_name, location_name, incident_date)
+        `)
+
+      // Apply filters
+      if (company !== 'All') {
+        query = query.eq('incidents.company_name', company)
+      }
+      if (location !== 'All') {
+        query = query.eq('incidents.location_name', location)
+      }
+      if (year !== 'All') {
+        const startDate = `${year}-01-01`
+        const endDate = `${year}-12-31`
+        query = query.gte('incidents.incident_date', startDate).lte('incidents.incident_date', endDate)
+      }
+
+      const { data: costs, error } = await query
+
+      if (error) {
+        console.error('Error loading TrueCost data:', error)
+        setTrueCostData({ total: 0, average: 0, monthlyTrend: [] })
+        return
+      }
+
+      // Calculate totals
+      const totalCost = costs.reduce((sum, item) => sum + (parseFloat(item.total_all_costs) || 0), 0)
+      const averageCost = costs.length > 0 ? totalCost / costs.length : 0
+
+      // Calculate monthly trend
+      const monthlyMap = {}
+      costs.forEach(item => {
+        if (item.incidents?.incident_date) {
+          const date = new Date(item.incidents.incident_date)
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+          
+          if (!monthlyMap[monthKey]) {
+            monthlyMap[monthKey] = {
+              total: 0,
+              direct: 0,
+              indirect: 0,
+              month: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+            }
+          }
+          
+          monthlyMap[monthKey].total += parseFloat(item.total_all_costs) || 0
+          monthlyMap[monthKey].direct += parseFloat(item.total_direct_costs) || 0
+          monthlyMap[monthKey].indirect += parseFloat(item.total_indirect_costs) || 0
+        }
+      })
+
+      // Convert to array and sort by date
+      const monthlyTrend = Object.keys(monthlyMap)
+        .sort()
+        .slice(-12) // Last 12 months
+        .map(key => monthlyMap[key])
+
+      setTrueCostData({
+        total: totalCost,
+        average: averageCost,
+        count: costs.length,
+        monthlyTrend
+      })
+
+    } catch (error) {
+      console.error('Error in loadTrueCostData:', error)
+      setTrueCostData({ total: 0, average: 0, monthlyTrend: [] })
+    }
   }
 
   useEffect(() => {
@@ -75,6 +226,7 @@ export default function Dashboard() {
   }
 
   const d = data
+  const tc = trueCostData
 
   return (
     <div>
@@ -164,6 +316,17 @@ export default function Dashboard() {
                 <div className="score-detail">Predicted risk level</div>
               </div>
 
+              {/* NEW: TrueCost Card */}
+              <div className={`score-card truecost`}>
+                <div className="score-label">💰 TrueCost™ Total</div>
+                <div className="score-value" style={{ fontSize: tc?.total >= 1000000 ? '32px' : '40px' }}>
+                  {tc ? formatMoney(tc.total) : '$0'}
+                </div>
+                <div className="score-detail">
+                  {tc?.count || 0} incidents • Avg: {tc ? formatMoney(tc.average) : '$0'}
+                </div>
+              </div>
+
               <div className={`score-card safe`}>
                 <div className="score-label">
                   Safe/At-Risk Ratio
@@ -226,6 +389,19 @@ export default function Dashboard() {
                 <div className="score-detail">Target: 10:1+</div>
               </div>
             </div>
+
+            {/* NEW: TrueCost Trend Graph Panel */}
+            <div className="panel" style={{ gridColumn: '1 / -1', marginBottom: '20px' }}>
+              <div className="panel-header" style={{ background: 'linear-gradient(135deg, #991b1b 0%, #b91c1c 100%)' }}>
+                💰 TrueCost™ Monthly Trend
+              </div>
+              <div className="panel-content">
+                {tc && <TrueCostTrendGraph monthlyData={tc.monthlyTrend} />}
+              </div>
+            </div>
+
+            {/* Continue with rest of dashboard panels... */}
+            {/* I'll keep the rest of the original code below this comment */}
 
             {/* Main Grid */}
             <div className="main-grid">
@@ -339,22 +515,14 @@ export default function Dashboard() {
               <div className="panel">
                 <div className="panel-header">
                   📈 Leading Indicators
-                  <TrendArrow trend={d.trends?.leadingActivities} goodDirection="up" />
+                  <TrendArrow trend={d.trends?.leadingTotal} goodDirection="up" />
                 </div>
                 <div className="panel-content">
-                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#064e3b', borderRadius: '8px'}}>
-                    <div style={{fontSize: '24px', fontWeight: 700, color: '#10b981'}}>{d.totalLeadingIndicators || 0}</div>
-                    <div style={{fontSize: '9px', color: '#6ee7b7', textTransform: 'uppercase'}}>Total Leading Activities</div>
-                  </div>
                   <div className="metrics-grid">
-                    <div className="metric"><div className="metric-label">HSE Contacts</div><div className="metric-value teal">{d.leadingIndicators?.hseContacts || 0}</div></div>
-                    <div className="metric"><div className="metric-label">THA/JSAs</div><div className="metric-value teal">{d.leadingIndicators?.thas || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Safety Meetings</div><div className="metric-value teal">{d.leadingIndicators?.safetyMeetings || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Toolbox Meetings</div><div className="metric-value teal">{d.leadingIndicators?.toolboxMeetings || 0}</div></div>
-                    <div className="metric"><div className="metric-label">STOP & Take 5</div><div className="metric-value teal">{d.leadingIndicators?.stopTake5 || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Risk Conversations</div><div className="metric-value teal">{d.leadingIndicators?.riskConversations || 0}</div></div>
-                    <div className="metric"><div className="metric-label">MBWA</div><div className="metric-value teal">{d.leadingIndicators?.mbwa || 0}</div></div>
-                    <div className="metric"><div className="metric-label">EHS Field Evals</div><div className="metric-value teal">{d.leadingIndicators?.ehsFieldEvals || 0}</div></div>
+                    <div className="metric"><div className="metric-label">BBS</div><div className="metric-value green">{d.leadingIndicators?.totalBBS || 0}</div></div>
+                    <div className="metric"><div className="metric-label">THA/JSA</div><div className="metric-value green">{d.leadingIndicators?.totalTHA || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Hazard IDs</div><div className="metric-value green">{d.leadingIndicators?.totalHazardIds || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Meetings</div><div className="metric-value green">{d.leadingIndicators?.totalMeetings || 0}</div></div>
                   </div>
                 </div>
               </div>
@@ -366,54 +534,44 @@ export default function Dashboard() {
                   <TrendArrow trend={d.trends?.incidents} goodDirection="down" />
                 </div>
                 <div className="panel-content">
-                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#7f1d1d', borderRadius: '8px'}}>
-                    <div style={{fontSize: '24px', fontWeight: 700, color: '#fca5a5'}}>{d.totalLaggingIndicators || 0}</div>
-                    <div style={{fontSize: '9px', color: '#fecaca', textTransform: 'uppercase'}}>Total Lagging Events</div>
-                  </div>
-                  <div style={{fontSize: '10px', color: '#64748b', marginBottom: '6px', textTransform: 'uppercase'}}>Incidents</div>
-                  <div className="status-row" style={{marginBottom: '10px'}}>
-                    <div className="status-item open"><div className="metric-value red">{d.laggingIndicators?.openIncidents || 0}</div><div className="metric-label">Open</div></div>
-                    <div className="status-item closed"><div className="metric-value green">{d.laggingIndicators?.closedIncidents || 0}</div><div className="metric-label">Closed</div></div>
-                  </div>
-                  <div className="metrics-grid" style={{marginBottom: '10px'}}>
-                    <div className="metric"><div className="metric-label">First Aid</div><div className="metric-value yellow">{d.laggingIndicators?.firstAid || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Recordable</div><div className="metric-value orange">{d.laggingIndicators?.recordable || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Lost Time</div><div className="metric-value red">{d.laggingIndicators?.lostTime || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Property Damage</div><div className="metric-value orange">{d.laggingIndicators?.propertyDamage || 0}</div></div>
-                  </div>
-                  <div style={{fontSize: '10px', color: '#64748b', marginBottom: '6px', textTransform: 'uppercase'}}>SAIL Log</div>
-                  <div className="status-row">
-                    <div className="status-item open"><div className="metric-value red">{d.laggingIndicators?.sailOpen || 0}</div><div className="metric-label">Open</div></div>
-                    <div className="status-item critical"><div className="metric-value red">{d.laggingIndicators?.sailCritical || 0}</div><div className="metric-label">Critical</div></div>
-                    <div className="status-item overdue"><div className="metric-value orange">{d.laggingIndicators?.sailOverdue || 0}</div><div className="metric-label">Overdue</div></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Aging Metrics */}
-              <div className="panel">
-                <div className="panel-header">⏰ Aging Metrics</div>
-                <div className="panel-content">
                   <div className="metrics-grid">
-                    <div className="metric"><div className="metric-label">Avg Days Open</div><div className="metric-value blue">{d.aging?.avgDaysOpen || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Over 30 Days</div><div className="metric-value yellow">{d.aging?.over30Days || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Over 60 Days</div><div className="metric-value orange">{d.aging?.over60Days || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Over 90 Days</div><div className="metric-value red">{d.aging?.over90Days || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Total Incidents</div><div className="metric-value red">{d.laggingIndicators?.totalIncidents || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Open</div><div className="metric-value orange">{d.laggingIndicators?.openIncidents || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Open SAIL</div><div className="metric-value orange">{d.laggingIndicators?.sailOpen || 0}</div></div>
+                    <div className="metric"><div className="metric-label">STKY</div><div className="metric-value purple">{d.laggingIndicators?.stkyCount || 0}</div></div>
                   </div>
                 </div>
               </div>
 
-              {/* LSR Audit Summary Panel */}
+              {/* Near Miss Reporting */}
               <div className="panel">
-                <div className="panel-header lsr-header">🛡️ LSR Audit Summary</div>
+                <div className="panel-header">⚠️ Near Miss Reporting</div>
                 <div className="panel-content">
-                  <div style={{textAlign: 'center', marginBottom: '12px', padding: '8px', background: '#1e1b4b', borderRadius: '8px'}}>
-                    <div style={{fontSize: '24px', fontWeight: 700, color: '#818cf8'}}>{d.lsrAuditCounts?.total || 0}</div>
-                    <div style={{fontSize: '9px', color: '#a5b4fc', textTransform: 'uppercase'}}>Total LSR Audits</div>
+                  <div style={{textAlign: 'center', marginBottom: '12px'}}>
+                    <div style={{fontSize: '28px', fontWeight: 700, color: '#f59e0b'}}>{d.nearMissMetrics?.totalReported || 0}</div>
+                    <div style={{fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase'}}>Near Misses Reported</div>
+                  </div>
+                  <div className="metrics-grid">
+                    <div className="metric"><div className="metric-label">High-SIF-P</div><div className="metric-value red">{d.nearMissMetrics?.bySeverity?.high || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Medium-SIF-P</div><div className="metric-value orange">{d.nearMissMetrics?.bySeverity?.medium || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Low</div><div className="metric-value green">{d.nearMissMetrics?.bySeverity?.low || 0}</div></div>
+                  </div>
+                </div>
+              </div>
+
+              {/* LSR Audits */}
+              <div className="panel">
+                <div className="panel-header">🔍 Life-Saving Rules Audits</div>
+                <div className="panel-content">
+                  <div style={{textAlign: 'center', marginBottom: '12px'}}>
+                    <div style={{fontSize: '28px', fontWeight: 700, color: '#8b5cf6'}}>{d.lsrAuditCounts?.total || 0}</div>
+                    <div style={{fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase'}}>Total LSR Audits</div>
                   </div>
                   <div className="metrics-grid">
                     <div className="metric"><div className="metric-label">Confined Space</div><div className="metric-value purple">{d.lsrAuditCounts?.confinedSpace || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Hot Work</div><div className="metric-value purple">{d.lsrAuditCounts?.hotWork || 0}</div></div>
                     <div className="metric"><div className="metric-label">Driving</div><div className="metric-value purple">{d.lsrAuditCounts?.driving || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Working at Heights</div><div className="metric-value purple">{d.lsrAuditCounts?.workingAtHeights || 0}</div></div>
                     <div className="metric"><div className="metric-label">Energy Isolation</div><div className="metric-value purple">{d.lsrAuditCounts?.energyIsolation || 0}</div></div>
                     <div className="metric"><div className="metric-label">Fall Protection</div><div className="metric-value purple">{d.lsrAuditCounts?.fallProtection || 0}</div></div>
                     <div className="metric"><div className="metric-label">Lifting Ops</div><div className="metric-value purple">{d.lsrAuditCounts?.liftingOperations || 0}</div></div>
@@ -525,4 +683,4 @@ export default function Dashboard() {
       </div>
     </div>
   )
-}
+}}
