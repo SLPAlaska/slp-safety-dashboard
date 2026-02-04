@@ -328,6 +328,370 @@ function AreasNeedingFocus({ data }) {
 }
 
 // ============================================================================
+// INJURY PROBABILITY GAUGE
+// ============================================================================
+function InjuryProbabilityGauge({ data }) {
+  const calculateProbability = () => {
+    let baseProbability = 5
+    const total = data?.bbsMetrics?.total || 0
+    const atRisk = data?.bbsMetrics?.atRisk || 0
+    const atRiskRate = total > 0 ? (atRisk / total) * 100 : 0
+    if (atRiskRate > 30) baseProbability *= 1.5
+    else if (atRiskRate > 20) baseProbability *= 1.3
+    else if (atRiskRate < 5) baseProbability *= 0.8
+    
+    const leadingTotal = (data?.leadingIndicators?.bbsObservations || 0) + (data?.leadingIndicators?.thas || 0) + (data?.leadingIndicators?.safetyMeetings || 0) + (data?.leadingIndicators?.hazardIds || 0)
+    if (leadingTotal >= 50) baseProbability *= 0.6
+    else if (leadingTotal >= 20) baseProbability *= 0.8
+    else if (leadingTotal < 5) baseProbability *= 1.5
+    
+    const sifRate = data?.sifMetrics?.sifPotentialRate || 0
+    if (sifRate > 20) baseProbability *= 1.4
+    else if (sifRate > 10) baseProbability *= 1.2
+    
+    const openItems = data?.aging?.over30Days || 0
+    if (openItems > 10) baseProbability *= 1.3
+    else if (openItems > 5) baseProbability *= 1.15
+    
+    const daysSince = data?.engagementMetrics?.daysSinceLastSubmission || 0
+    if (daysSince > 14) baseProbability *= 1.4
+    else if (daysSince > 7) baseProbability *= 1.2
+    
+    return Math.min(95, Math.max(1, Math.round(baseProbability)))
+  }
+  
+  const probability = calculateProbability()
+  const riskLevel = probability >= 25 ? 'High' : probability >= 15 ? 'Elevated' : probability >= 8 ? 'Moderate' : 'Low'
+  const color = probability >= 25 ? '#dc2626' : probability >= 15 ? '#f97316' : probability >= 8 ? '#eab308' : '#22c55e'
+  const rotation = (probability / 100) * 180 - 90
+
+  return (
+    <div className="panel">
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)' }}>
+        🎯 30-Day Injury Probability
+      </div>
+      <div className="panel-content" style={{ textAlign: 'center' }}>
+        <div style={{ position: 'relative', width: '180px', height: '100px', margin: '0 auto 12px' }}>
+          <svg viewBox="0 0 200 120" style={{ width: '100%', height: '100%' }}>
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1e293b" strokeWidth="16" strokeLinecap="round" />
+            <path d="M 20 100 A 80 80 0 0 1 60 35" fill="none" stroke="#22c55e" strokeWidth="16" strokeLinecap="round" />
+            <path d="M 60 35 A 80 80 0 0 1 100 20" fill="none" stroke="#eab308" strokeWidth="16" />
+            <path d="M 100 20 A 80 80 0 0 1 140 35" fill="none" stroke="#f97316" strokeWidth="16" />
+            <path d="M 140 35 A 80 80 0 0 1 180 100" fill="none" stroke="#dc2626" strokeWidth="16" strokeLinecap="round" />
+            <line x1="100" y1="100" x2="100" y2="35" stroke={color} strokeWidth="3" strokeLinecap="round" transform={`rotate(${rotation}, 100, 100)`} />
+            <circle cx="100" cy="100" r="6" fill={color} />
+          </svg>
+        </div>
+        <div style={{ fontSize: '42px', fontWeight: 700, color, lineHeight: 1 }}>{probability}%</div>
+        <div style={{ display: 'inline-block', marginTop: '8px', padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 600, background: `${color}22`, color }}>{riskLevel} Risk</div>
+        <div style={{ fontSize: '10px', color: '#64748b', marginTop: '8px' }}>95% CI: {Math.max(1, probability - 10)}% - {Math.min(95, probability + 10)}%</div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// SIF POTENTIAL PREDICTOR
+// ============================================================================
+function SIFPotentialPredictor({ data }) {
+  const calculateSIFScore = () => {
+    let score = 0
+    const factors = []
+    const recommendations = []
+    
+    const energyTypes = data?.energySourceMetrics?.byEnergyType || {}
+    const highEnergy = ['Gravity', 'Electrical', 'Pressure', 'Mechanical']
+    highEnergy.forEach(type => {
+      if ((energyTypes[type] || 0) > 10) { score += 15; factors.push(`High ${type} energy exposure`) }
+    })
+    
+    const controlScore = data?.energySourceMetrics?.controlHierarchyScore || 50
+    if (controlScore < 40) { score += 20; factors.push('Weak control hierarchy'); recommendations.push({ priority: 'High', action: 'Upgrade to engineering controls' }) }
+    
+    const sifCount = data?.sifMetrics?.sifPotentialCount || 0
+    if (sifCount > 5) { score += 25; factors.push(`${sifCount} SIF-potential events`) }
+    else if (sifCount > 2) { score += 15; factors.push(`${sifCount} SIF-potential events`) }
+    
+    const lsrIssues = data?.areasNeedingFocus?.filter(a => a.source === 'LSR Audit') || []
+    if (lsrIssues.length > 3) { score += 20; factors.push(`${lsrIssues.length} LSR compliance gaps`); recommendations.push({ priority: 'Critical', action: 'Address Life-Saving Rule violations' }) }
+    
+    return { score: Math.min(100, score), factors, recommendations }
+  }
+  
+  const sif = calculateSIFScore()
+  const level = sif.score >= 60 ? 'Critical' : sif.score >= 40 ? 'High' : sif.score >= 20 ? 'Moderate' : 'Low'
+  const color = sif.score >= 60 ? '#dc2626' : sif.score >= 40 ? '#f97316' : sif.score >= 20 ? '#eab308' : '#22c55e'
+
+  return (
+    <div className="panel">
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #581c87 0%, #7c3aed 100%)' }}>☠️ SIF Potential Predictor</div>
+      <div className="panel-content">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
+          <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: `conic-gradient(${color} ${sif.score * 3.6}deg, #1e293b ${sif.score * 3.6}deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
+              <div style={{ fontSize: '18px', fontWeight: 700, color }}>{sif.score}</div>
+            </div>
+          </div>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color }}>{level} SIF Risk</div>
+            <div style={{ fontSize: '10px', color: '#94a3b8' }}>Serious Injury/Fatality Potential</div>
+          </div>
+        </div>
+        {sif.factors.length > 0 && (
+          <div style={{ marginBottom: '10px' }}>
+            <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px', textTransform: 'uppercase' }}>Risk Factors:</div>
+            {sif.factors.slice(0, 3).map((f, i) => (<div key={i} style={{ fontSize: '10px', color: '#f97316', padding: '2px 0' }}>⚠️ {f}</div>))}
+          </div>
+        )}
+        {sif.recommendations.length > 0 && (
+          <div style={{ background: '#0f172a', borderRadius: '6px', padding: '8px' }}>
+            <div style={{ fontSize: '9px', color: '#22c55e', marginBottom: '4px' }}>RECOMMENDED ACTIONS</div>
+            {sif.recommendations.map((r, i) => (<div key={i} style={{ fontSize: '10px', color: '#94a3b8' }}><span style={{ color: r.priority === 'Critical' ? '#ef4444' : '#f97316' }}>{r.priority}:</span> {r.action}</div>))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// LOCATION RISK HEAT MAP
+// ============================================================================
+function LocationRiskHeatMap({ data }) {
+  const buildLocationRisk = () => {
+    const locationRisks = {}
+    ;(data?.openItems || []).forEach(item => {
+      const loc = item.location || 'Unknown'
+      if (!locationRisks[loc]) locationRisks[loc] = { incidents: 0, atRisk: 0, sif: 0, openItems: 0 }
+      locationRisks[loc].openItems++
+    })
+    return Object.entries(locationRisks).map(([location, d]) => ({
+      location, ...d,
+      riskScore: Math.min(100, (d.incidents * 20) + (d.sif * 30) + (d.atRisk * 5) + (d.openItems * 10))
+    })).sort((a, b) => b.riskScore - a.riskScore).slice(0, 6)
+  }
+  
+  const locations = buildLocationRisk()
+  const getColor = (score) => score >= 60 ? '#dc2626' : score >= 40 ? '#f97316' : score >= 20 ? '#eab308' : '#22c55e'
+
+  return (
+    <div className="panel">
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%)' }}>🗺️ Location Risk Heat Map</div>
+      <div className="panel-content">
+        {locations.length === 0 ? (
+          <div style={{ textAlign: 'center', color: '#22c55e', padding: '20px' }}>✅ No high-risk locations identified</div>
+        ) : (
+          locations.map((loc, i) => (
+            <div key={i} style={{ marginBottom: '10px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
+                <span style={{ fontSize: '11px', color: '#e2e8f0' }}>{loc.location}</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: getColor(loc.riskScore) }}>{loc.riskScore}</span>
+              </div>
+              <div style={{ height: '6px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${loc.riskScore}%`, background: getColor(loc.riskScore), borderRadius: '3px' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '8px', fontSize: '9px', color: '#64748b', marginTop: '2px' }}>
+                <span>📋 {loc.openItems} open</span>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// COMPLIANCE DASHBOARD
+// ============================================================================
+function ComplianceDashboard({ data }) {
+  const [activeTab, setActiveTab] = useState('lsr')
+  const lsrIssues = data?.areasNeedingFocus?.filter(a => a.source === 'LSR Audit') || []
+  const totalLsrAudits = data?.lsrAuditCounts?.total || 0
+  const totalIssues = lsrIssues.reduce((sum, i) => sum + i.count, 0)
+  const lsrCompliance = totalLsrAudits > 0 ? Math.round(((totalLsrAudits - totalIssues) / totalLsrAudits) * 100) : 100
+  
+  const lsrCategories = [
+    { name: 'Confined Space', count: data?.lsrAuditCounts?.confinedSpace || 0 },
+    { name: 'Driving', count: data?.lsrAuditCounts?.driving || 0 },
+    { name: 'Energy Isolation', count: data?.lsrAuditCounts?.energyIsolation || 0 },
+    { name: 'Fall Protection', count: data?.lsrAuditCounts?.fallProtection || 0 },
+    { name: 'Lifting Operations', count: data?.lsrAuditCounts?.liftingOperations || 0 },
+    { name: 'Line of Fire', count: data?.lsrAuditCounts?.lineOfFire || 0 },
+    { name: 'Work Permits', count: data?.lsrAuditCounts?.workPermits || 0 },
+  ].filter(c => c.count > 0)
+
+  return (
+    <div className="panel">
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #065f46 0%, #059669 100%)' }}>✅ Compliance Dashboard</div>
+      <div className="panel-content">
+        <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+          <button onClick={() => setActiveTab('lsr')} style={{ flex: 1, padding: '6px', border: 'none', borderRadius: '4px', fontSize: '10px', fontWeight: 600, cursor: 'pointer', background: activeTab === 'lsr' ? '#059669' : '#1e293b', color: activeTab === 'lsr' ? '#fff' : '#94a3b8' }}>Life-Saving Rules</button>
+          <button onClick={() => setActiveTab('inspection')} style={{ flex: 1, padding: '6px', border: 'none', borderRadius: '4px', fontSize: '10px', fontWeight: 600, cursor: 'pointer', background: activeTab === 'inspection' ? '#059669' : '#1e293b', color: activeTab === 'inspection' ? '#fff' : '#94a3b8' }}>Inspections</button>
+        </div>
+        {activeTab === 'lsr' ? (
+          <>
+            <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+              <div style={{ fontSize: '36px', fontWeight: 700, color: lsrCompliance >= 80 ? '#22c55e' : lsrCompliance >= 60 ? '#eab308' : '#ef4444' }}>{lsrCompliance}%</div>
+              <div style={{ fontSize: '10px', color: '#94a3b8' }}>LSR Compliance Rate</div>
+              <div style={{ fontSize: '9px', color: '#64748b' }}>{totalLsrAudits} audits • {totalIssues} issues</div>
+            </div>
+            <div className="metrics-grid">
+              {lsrCategories.map(cat => {
+                const catIssues = lsrIssues.filter(i => i.category.includes(cat.name)).length
+                const catCompliance = cat.count > 0 ? Math.round(((cat.count - catIssues) / cat.count) * 100) : 100
+                return (<div key={cat.name} className="metric"><div className="metric-label">{cat.name}</div><div className="metric-value" style={{ color: catCompliance >= 80 ? '#22c55e' : catCompliance >= 60 ? '#eab308' : '#ef4444' }}>{catCompliance}%</div></div>)
+              })}
+            </div>
+          </>
+        ) : (
+          <>
+            <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+              <div style={{ fontSize: '36px', fontWeight: 700, color: '#22d3ee' }}>{data?.totalInspections || 0}</div>
+              <div style={{ fontSize: '10px', color: '#94a3b8' }}>Total Inspections</div>
+            </div>
+            <div className="metrics-grid">
+              <div className="metric"><div className="metric-label">Fire Ext.</div><div className="metric-value cyan">{data?.inspectionCounts?.fireExtinguisher || 0}</div></div>
+              <div className="metric"><div className="metric-label">Eyewash</div><div className="metric-value cyan">{data?.inspectionCounts?.eyewash || 0}</div></div>
+              <div className="metric"><div className="metric-label">Harness</div><div className="metric-value cyan">{data?.inspectionCounts?.harness || 0}</div></div>
+              <div className="metric"><div className="metric-label">Vehicle</div><div className="metric-value cyan">{data?.inspectionCounts?.vehicle || 0}</div></div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// INCIDENT RECURRENCE PATTERNS
+// ============================================================================
+function IncidentRecurrencePanel({ data }) {
+  const analyzePatterns = () => {
+    const openItems = data?.openItems || []
+    if (openItems.length < 2) return { patterns: [], risk: 'Insufficient Data' }
+    const patterns = []
+    const byForm = {}, byLocation = {}
+    openItems.forEach(item => {
+      const form = item.form || 'Unknown'
+      const loc = item.location || 'Unknown'
+      byForm[form] = (byForm[form] || 0) + 1
+      byLocation[loc] = (byLocation[loc] || 0) + 1
+    })
+    Object.entries(byForm).forEach(([form, count]) => { if (count >= 2) patterns.push({ pattern: `${form} items`, count, recommendation: `Prioritize ${form} closure` }) })
+    Object.entries(byLocation).forEach(([loc, count]) => { if (count >= 2) patterns.push({ pattern: `Items at ${loc}`, count, recommendation: `Site focus for ${loc}` }) })
+    return { patterns: patterns.sort((a, b) => b.count - a.count).slice(0, 4), risk: patterns.length > 3 ? 'High' : patterns.length > 1 ? 'Medium' : 'Low' }
+  }
+  
+  const analysis = analyzePatterns()
+  const riskColor = analysis.risk === 'High' ? '#dc2626' : analysis.risk === 'Medium' ? '#f97316' : '#22c55e'
+
+  return (
+    <div className="panel">
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #831843 0%, #be185d 100%)' }}>🔄 Recurrence Patterns</div>
+      <div className="panel-content">
+        <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+          <span style={{ display: 'inline-block', padding: '6px 16px', borderRadius: '16px', background: `${riskColor}22`, color: riskColor, fontSize: '11px', fontWeight: 600 }}>{analysis.risk} Risk</span>
+          <div style={{ fontSize: '10px', color: '#64748b', marginTop: '6px' }}>{analysis.patterns.length} pattern(s) identified</div>
+        </div>
+        {analysis.patterns.length > 0 ? (
+          analysis.patterns.map((p, i) => (
+            <div key={i} style={{ padding: '8px', background: '#0f172a', borderRadius: '6px', marginBottom: '6px', borderLeft: '3px solid #f97316' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '11px', color: '#e2e8f0' }}>{p.pattern}</span>
+                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '8px', background: '#78350f', color: '#fcd34d' }}>{p.count}x</span>
+              </div>
+              <div style={{ fontSize: '9px', color: '#94a3b8', marginTop: '4px' }}>💡 {p.recommendation}</div>
+            </div>
+          ))
+        ) : (
+          <div style={{ textAlign: 'center', color: '#22c55e', padding: '16px' }}>✅ No significant patterns</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// LEADING INDICATOR CASCADE
+// ============================================================================
+function LeadingIndicatorCascade({ data }) {
+  const leading = data?.leadingIndicators || {}
+  const totalLeading = (leading.bbsObservations || 0) + (leading.thas || 0) + (leading.safetyMeetings || 0) + (leading.toolboxMeetings || 0) + (leading.hazardIds || 0) + (leading.hseContacts || 0)
+  const totalLagging = (data?.laggingIndicators?.openIncidents || 0) + (data?.laggingIndicators?.closedIncidents || 0)
+  const ratio = totalLagging > 0 ? Math.round((totalLeading / totalLagging) * 10) / 10 : totalLeading
+  const effectiveness = totalLeading + totalLagging > 0 ? Math.round((totalLeading / (totalLeading + totalLagging)) * 100) : 100
+  const ratioColor = ratio >= 10 ? '#22c55e' : ratio >= 5 ? '#eab308' : '#ef4444'
+  const status = ratio >= 10 ? 'Excellent' : ratio >= 5 ? 'Good' : ratio >= 2 ? 'Needs Improvement' : 'Critical'
+
+  return (
+    <div className="panel">
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)' }}>📈 Leading Indicator Effectiveness</div>
+      <div className="panel-content">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+          <div style={{ textAlign: 'center', padding: '10px', background: '#0f172a', borderRadius: '6px' }}>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: ratioColor }}>{ratio}:1</div>
+            <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase' }}>Lead/Lag Ratio</div>
+          </div>
+          <div style={{ textAlign: 'center', padding: '10px', background: '#0f172a', borderRadius: '6px' }}>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: effectiveness >= 70 ? '#22c55e' : '#eab308' }}>{effectiveness}%</div>
+            <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase' }}>Intervention Rate</div>
+          </div>
+        </div>
+        <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+          <span style={{ display: 'inline-block', padding: '4px 12px', borderRadius: '12px', background: `${ratioColor}22`, color: ratioColor, fontSize: '10px', fontWeight: 600 }}>{status}</span>
+        </div>
+        <div className="metrics-grid">
+          <div className="metric"><div className="metric-label">BBS</div><div className="metric-value green">{leading.bbsObservations || 0}</div></div>
+          <div className="metric"><div className="metric-label">THA/JSA</div><div className="metric-value green">{leading.thas || 0}</div></div>
+          <div className="metric"><div className="metric-label">Meetings</div><div className="metric-value green">{(leading.safetyMeetings || 0) + (leading.toolboxMeetings || 0)}</div></div>
+          <div className="metric"><div className="metric-label">Hazard IDs</div><div className="metric-value green">{leading.hazardIds || 0}</div></div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// RISK FORECAST TIMELINE
+// ============================================================================
+function RiskForecastTimeline({ data }) {
+  const forecast = data?.riskForecast30Day || 0
+  const level = forecast >= 70 ? 'Critical' : forecast >= 50 ? 'High' : forecast >= 30 ? 'Elevated' : 'Low'
+  const color = forecast >= 70 ? '#dc2626' : forecast >= 50 ? '#f97316' : forecast >= 30 ? '#eab308' : '#22c55e'
+  const recommendations = []
+  if (data?.engagementMetrics?.daysSinceLastSubmission > 7) recommendations.push({ priority: 'High', action: 'Increase safety engagement', detail: `${data.engagementMetrics.daysSinceLastSubmission} days since last activity` })
+  if (data?.aging?.avgDaysOpen > 30) recommendations.push({ priority: 'Medium', action: 'Close aging items', detail: `Average age: ${data.aging.avgDaysOpen} days` })
+  if (data?.trends?.atRiskBehaviors?.direction === 'up') recommendations.push({ priority: 'High', action: 'Address rising at-risk behaviors', detail: `Up ${data.trends.atRiskBehaviors.percent}%` })
+
+  return (
+    <div className="panel">
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #0c4a6e 0%, #0284c7 100%)' }}>🔮 Risk Forecast Details</div>
+      <div className="panel-content">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: `${color}22`, borderRadius: '8px', border: `1px solid ${color}44`, marginBottom: '12px' }}>
+          <div style={{ fontSize: '42px', fontWeight: 700, color, lineHeight: 1 }}>{forecast}</div>
+          <div>
+            <div style={{ fontSize: '14px', fontWeight: 600, color }}>{level} Risk</div>
+            <div style={{ fontSize: '10px', color: `${color}cc` }}>Projected for next 30 days</div>
+          </div>
+        </div>
+        {recommendations.length > 0 && (
+          <>
+            <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '6px', textTransform: 'uppercase' }}>Recommended Actions:</div>
+            {recommendations.map((rec, i) => (
+              <div key={i} style={{ padding: '8px', background: '#0f172a', borderRadius: '6px', marginBottom: '6px', borderLeft: `3px solid ${rec.priority === 'High' ? '#f97316' : '#eab308'}` }}>
+                <div style={{ fontSize: '11px', color: '#e2e8f0', fontWeight: 500 }}>{rec.action}</div>
+                <div style={{ fontSize: '10px', color: '#94a3b8' }}>{rec.detail}</div>
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
 // TREND ARROW COMPONENT
 // ============================================================================
 function TrendArrow({ trend, goodDirection = 'up' }) {
@@ -932,6 +1296,34 @@ export default function Dashboard() {
                     <div className="metric"><div className="metric-label">Scaffolds</div><div className="metric-value cyan">{d.inspectionCounts?.scaffold || 0}</div></div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* ================================================================
+                ADVANCED ANALYTICS - Predictive Modeling & Risk Assessment
+                ================================================================ */}
+            <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+              <div style={{ 
+                fontSize: '14px', 
+                fontWeight: 700, 
+                color: '#e2e8f0', 
+                marginBottom: '12px',
+                paddingBottom: '8px',
+                borderBottom: '2px solid #3b82f6',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <span>🧠</span> Advanced Predictive Analytics
+              </div>
+              <div className="main-grid">
+                <InjuryProbabilityGauge data={d} />
+                <SIFPotentialPredictor data={d} />
+                <RiskForecastTimeline data={d} />
+                <ComplianceDashboard data={d} />
+                <LeadingIndicatorCascade data={d} />
+                <LocationRiskHeatMap data={d} />
+                <IncidentRecurrencePanel data={d} />
               </div>
             </div>
 
