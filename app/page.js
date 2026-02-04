@@ -16,7 +16,320 @@ function formatMoney(amount) {
   return '$' + Math.round(amount).toLocaleString()
 }
 
-// Trend Arrow Component
+// ============================================================================
+// AREAS NEEDING FOCUS - CONSTANTS
+// ============================================================================
+const SEVERITY_COLORS = {
+  high: { bg: '#7f1d1d', text: '#fca5a5', border: '#dc2626' },
+  medium: { bg: '#78350f', text: '#fcd34d', border: '#f59e0b' },
+  low: { bg: '#1e3a5f', text: '#93c5fd', border: '#3b82f6' }
+}
+
+const SOURCE_ICONS = {
+  'LSR Audit': '🔍',
+  'BBS Observation': '👀',
+  'Near Miss/Good Catch': '⚠️',
+  'Incident': '🚨',
+  'SAIL Log': '📋',
+  'Hazard ID': '⚡',
+  'Inspection': '🔧',
+  'Corrective Action': '✅',
+  'Property Damage': '💥'
+}
+
+// ============================================================================
+// AREAS NEEDING FOCUS COMPONENT
+// ============================================================================
+function AreasNeedingFocus({ data }) {
+  const [filter, setFilter] = useState('all')
+  const [severityFilter, setSeverityFilter] = useState('all')
+  
+  const focusAreas = data?.areasNeedingFocus || []
+  
+  // Get unique sources for filter
+  const sources = [...new Set(focusAreas.map(f => f.source))]
+  
+  // Apply filters
+  const filteredAreas = focusAreas.filter(area => {
+    if (filter !== 'all' && area.source !== filter) return false
+    if (severityFilter !== 'all' && area.severity !== severityFilter) return false
+    return true
+  })
+
+  // Count by source for summary
+  const countBySource = {}
+  focusAreas.forEach(area => {
+    countBySource[area.source] = (countBySource[area.source] || 0) + 1
+  })
+
+  // Count by severity
+  const highCount = focusAreas.filter(a => a.severity === 'high').length
+  const mediumCount = focusAreas.filter(a => a.severity === 'medium').length
+  const lowCount = focusAreas.filter(a => a.severity === 'low').length
+
+  return (
+    <div className="panel" style={{ marginTop: '16px' }}>
+      <div className="panel-header" style={{ 
+        background: 'linear-gradient(135deg, #7c2d12 0%, #9a3412 100%)',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '10px'
+      }}>
+        <span>⚠️ Areas Needing Focus ({focusAreas.length} items from {sources.length} sources)</span>
+        
+        {/* Quick severity summary */}
+        <div style={{ display: 'flex', gap: '8px', fontSize: '10px' }}>
+          <span style={{ 
+            background: SEVERITY_COLORS.high.bg, 
+            color: SEVERITY_COLORS.high.text,
+            padding: '2px 8px',
+            borderRadius: '10px',
+            fontWeight: 600
+          }}>
+            🔴 {highCount} High
+          </span>
+          <span style={{ 
+            background: SEVERITY_COLORS.medium.bg, 
+            color: SEVERITY_COLORS.medium.text,
+            padding: '2px 8px',
+            borderRadius: '10px',
+            fontWeight: 600
+          }}>
+            🟡 {mediumCount} Med
+          </span>
+          <span style={{ 
+            background: SEVERITY_COLORS.low.bg, 
+            color: SEVERITY_COLORS.low.text,
+            padding: '2px 8px',
+            borderRadius: '10px',
+            fontWeight: 600
+          }}>
+            🔵 {lowCount} Low
+          </span>
+        </div>
+      </div>
+      
+      <div className="panel-content">
+        {/* Source Summary Cards */}
+        {Object.keys(countBySource).length > 0 && (
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+            gap: '8px',
+            marginBottom: '12px'
+          }}>
+            {Object.entries(countBySource).map(([source, count]) => (
+              <div
+                key={source}
+                onClick={() => setFilter(filter === source ? 'all' : source)}
+                style={{
+                  background: filter === source ? '#f97316' : '#0f172a',
+                  padding: '8px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  border: filter === source ? '1px solid #fb923c' : '1px solid #334155',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <div style={{ fontSize: '16px' }}>{SOURCE_ICONS[source] || '📊'}</div>
+                <div style={{ 
+                  fontSize: '18px', 
+                  fontWeight: 700, 
+                  color: filter === source ? '#fff' : '#f97316'
+                }}>
+                  {count}
+                </div>
+                <div style={{ 
+                  fontSize: '8px', 
+                  color: filter === source ? '#fff' : '#64748b',
+                  textTransform: 'uppercase'
+                }}>
+                  {source}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Filter Bar */}
+        <div style={{ 
+          display: 'flex', 
+          gap: '8px', 
+          marginBottom: '12px',
+          flexWrap: 'wrap',
+          alignItems: 'center'
+        }}>
+          <span style={{ fontSize: '10px', color: '#64748b' }}>FILTER BY:</span>
+          
+          {/* Source Filter */}
+          <select 
+            value={filter} 
+            onChange={(e) => setFilter(e.target.value)}
+            style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              fontSize: '11px',
+              color: '#e2e8f0'
+            }}
+          >
+            <option value="all">All Sources</option>
+            {sources.map(source => (
+              <option key={source} value={source}>{source}</option>
+            ))}
+          </select>
+          
+          {/* Severity Filter */}
+          <select 
+            value={severityFilter} 
+            onChange={(e) => setSeverityFilter(e.target.value)}
+            style={{
+              background: '#1e293b',
+              border: '1px solid #334155',
+              borderRadius: '4px',
+              padding: '4px 8px',
+              fontSize: '11px',
+              color: '#e2e8f0'
+            }}
+          >
+            <option value="all">All Severities</option>
+            <option value="high">High Only</option>
+            <option value="medium">Medium Only</option>
+            <option value="low">Low Only</option>
+          </select>
+          
+          {(filter !== 'all' || severityFilter !== 'all') && (
+            <button
+              onClick={() => { setFilter('all'); setSeverityFilter('all'); }}
+              style={{
+                background: '#334155',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                fontSize: '10px',
+                color: '#94a3b8',
+                cursor: 'pointer'
+              }}
+            >
+              Clear Filters
+            </button>
+          )}
+          
+          <span style={{ fontSize: '10px', color: '#64748b', marginLeft: 'auto' }}>
+            Showing {filteredAreas.length} of {focusAreas.length}
+          </span>
+        </div>
+
+        {/* Focus Areas Table */}
+        <div className="scrollable" style={{ maxHeight: '400px' }}>
+          {filteredAreas.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#64748b', padding: '30px' }}>
+              {focusAreas.length === 0 
+                ? '✅ No issues identified - Great job!' 
+                : 'No items match the selected filters'}
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '30px' }}></th>
+                  <th>Source</th>
+                  <th>Category</th>
+                  <th>Issue</th>
+                  <th style={{ width: '50px' }}>Count</th>
+                  <th>Severity</th>
+                  <th>Top Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAreas.map((focus, i) => {
+                  const severityColors = SEVERITY_COLORS[focus.severity] || SEVERITY_COLORS.low
+                  
+                  return (
+                    <tr key={i} style={{ 
+                      borderLeft: `3px solid ${severityColors.border}`,
+                    }}>
+                      <td style={{ textAlign: 'center', fontSize: '14px' }}>
+                        {SOURCE_ICONS[focus.source] || '📊'}
+                      </td>
+                      <td style={{ 
+                        fontSize: '10px', 
+                        color: '#94a3b8',
+                        whiteSpace: 'nowrap'
+                      }}>
+                        {focus.source}
+                      </td>
+                      <td style={{ 
+                        color: '#f97316', 
+                        fontWeight: 600,
+                        fontSize: '11px'
+                      }}>
+                        {focus.category}
+                      </td>
+                      <td style={{ fontSize: '11px', maxWidth: '250px' }}>
+                        {focus.issue}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span style={{ 
+                          fontWeight: 'bold', 
+                          fontSize: '14px',
+                          color: focus.count >= 5 ? '#ef4444' : focus.count >= 3 ? '#f97316' : '#eab308'
+                        }}>
+                          {focus.count}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ 
+                          background: severityColors.bg,
+                          color: severityColors.text,
+                          padding: '2px 8px',
+                          borderRadius: '10px',
+                          fontSize: '9px',
+                          fontWeight: 600,
+                          textTransform: 'uppercase'
+                        }}>
+                          {focus.severity}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '11px', color: '#94a3b8' }}>
+                        {focus.topLocation}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+        
+        {/* Legend */}
+        <div style={{ 
+          marginTop: '12px', 
+          paddingTop: '12px', 
+          borderTop: '1px solid #334155',
+          fontSize: '9px',
+          color: '#64748b',
+          display: 'flex',
+          gap: '16px',
+          flexWrap: 'wrap'
+        }}>
+          <span><strong>Data Sources:</strong></span>
+          {Object.entries(SOURCE_ICONS).map(([source, icon]) => (
+            <span key={source}>{icon} {source}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// TREND ARROW COMPONENT
+// ============================================================================
 function TrendArrow({ trend, goodDirection = 'up' }) {
   if (!trend || trend.direction === 'flat') {
     return <span className="trend-arrow flat">→</span>
@@ -30,7 +343,9 @@ function TrendArrow({ trend, goodDirection = 'up' }) {
   )
 }
 
-// Engagement Alert Component
+// ============================================================================
+// ENGAGEMENT ALERT COMPONENT
+// ============================================================================
 function EngagementAlert({ metrics }) {
   if (!metrics || metrics.engagementStatus === 'active') return null
   
@@ -52,7 +367,9 @@ function EngagementAlert({ metrics }) {
   )
 }
 
-// TrueCost Trend Graph Component
+// ============================================================================
+// TRUECOST TREND GRAPH COMPONENT
+// ============================================================================
 function TrueCostTrendGraph({ monthlyData }) {
   if (!monthlyData || monthlyData.length === 0) {
     return (
@@ -116,6 +433,9 @@ function TrueCostTrendGraph({ monthlyData }) {
   )
 }
 
+// ============================================================================
+// MAIN DASHBOARD COMPONENT
+// ============================================================================
 export default function Dashboard() {
   const [data, setData] = useState(null)
   const [trueCostData, setTrueCostData] = useState(null)
@@ -307,7 +627,7 @@ export default function Dashboard() {
                 <div className="score-detail">Lower is better</div>
               </div>
 
-              {/* NEW: 30-Day Risk Forecast */}
+              {/* 30-Day Risk Forecast */}
               <div className={`score-card forecast`}>
                 <div className="score-label">🔮 30-Day Forecast</div>
                 <div className={`score-value ${d.riskForecast30Day <= 30 ? 'good' : d.riskForecast30Day <= 60 ? 'warning' : 'danger'}`}>
@@ -316,7 +636,7 @@ export default function Dashboard() {
                 <div className="score-detail">Predicted risk level</div>
               </div>
 
-              {/* NEW: TrueCost Card */}
+              {/* TrueCost Card */}
               <div className={`score-card truecost`}>
                 <div className="score-label">💰 TrueCost™ Total</div>
                 <div className="score-value" style={{ fontSize: tc?.total >= 1000000 ? '32px' : '40px' }}>
@@ -390,7 +710,7 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* NEW: TrueCost Trend Graph Panel */}
+            {/* TrueCost Trend Graph Panel */}
             <div className="panel" style={{ gridColumn: '1 / -1', marginBottom: '20px' }}>
               <div className="panel-header" style={{ background: 'linear-gradient(135deg, #991b1b 0%, #b91c1c 100%)' }}>
                 💰 TrueCost™ Monthly Trend
@@ -400,12 +720,9 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Continue with rest of dashboard panels... */}
-            {/* I'll keep the rest of the original code below this comment */}
-
             {/* Main Grid */}
             <div className="main-grid">
-              {/* NEW: Engagement & Activity Panel */}
+              {/* Engagement & Activity Panel */}
               <div className="panel">
                 <div className="panel-header engagement-header">👥 Engagement & Activity</div>
                 <div className="panel-content">
@@ -519,10 +836,10 @@ export default function Dashboard() {
                 </div>
                 <div className="panel-content">
                   <div className="metrics-grid">
-                    <div className="metric"><div className="metric-label">BBS</div><div className="metric-value green">{d.leadingIndicators?.totalBBS || 0}</div></div>
-                    <div className="metric"><div className="metric-label">THA/JSA</div><div className="metric-value green">{d.leadingIndicators?.totalTHA || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Hazard IDs</div><div className="metric-value green">{d.leadingIndicators?.totalHazardIds || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Meetings</div><div className="metric-value green">{d.leadingIndicators?.totalMeetings || 0}</div></div>
+                    <div className="metric"><div className="metric-label">BBS</div><div className="metric-value green">{d.leadingIndicators?.bbsObservations || 0}</div></div>
+                    <div className="metric"><div className="metric-label">THA/JSA</div><div className="metric-value green">{d.leadingIndicators?.thas || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Hazard IDs</div><div className="metric-value green">{d.leadingIndicators?.hazardIds || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Meetings</div><div className="metric-value green">{(d.leadingIndicators?.safetyMeetings || 0) + (d.leadingIndicators?.toolboxMeetings || 0)}</div></div>
                   </div>
                 </div>
               </div>
@@ -535,10 +852,10 @@ export default function Dashboard() {
                 </div>
                 <div className="panel-content">
                   <div className="metrics-grid">
-                    <div className="metric"><div className="metric-label">Total Incidents</div><div className="metric-value red">{d.laggingIndicators?.totalIncidents || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Total Incidents</div><div className="metric-value red">{(d.laggingIndicators?.openIncidents || 0) + (d.laggingIndicators?.closedIncidents || 0)}</div></div>
                     <div className="metric"><div className="metric-label">Open</div><div className="metric-value orange">{d.laggingIndicators?.openIncidents || 0}</div></div>
                     <div className="metric"><div className="metric-label">Open SAIL</div><div className="metric-value orange">{d.laggingIndicators?.sailOpen || 0}</div></div>
-                    <div className="metric"><div className="metric-label">STKY</div><div className="metric-value purple">{d.laggingIndicators?.stkyCount || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Property Damage</div><div className="metric-value purple">{d.laggingIndicators?.propertyDamage || 0}</div></div>
                   </div>
                 </div>
               </div>
@@ -645,31 +962,10 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Areas Needing Focus */}
-            <div className="panel" style={{marginTop: '16px'}}>
-              <div className="panel-header">⚠️ Areas Needing Focus (LSR Audits)</div>
-              <div className="panel-content">
-                <div className="scrollable">
-                  {(!d.areasNeedingFocus || d.areasNeedingFocus.length === 0) ? (
-                    <div style={{textAlign: 'center', color: '#64748b', padding: '20px'}}>No issues identified</div>
-                  ) : (
-                    <table className="data-table">
-                      <thead><tr><th>Category</th><th>Issue</th><th>Count</th><th>Location</th></tr></thead>
-                      <tbody>
-                        {d.areasNeedingFocus.map((focus, i) => (
-                          <tr key={i}>
-                            <td style={{color: '#f97316', fontWeight: 600}}>{focus.category}</td>
-                            <td style={{fontSize: '11px'}}>{focus.issue}</td>
-                            <td><span style={{fontWeight: 'bold', color: focus.count >= 3 ? '#ef4444' : focus.count >= 2 ? '#f97316' : '#eab308'}}>{focus.count}</span></td>
-                            <td style={{fontSize: '11px'}}>{focus.topLocation || 'N/A'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </div>
-            </div>
+            {/* ================================================================
+                AREAS NEEDING FOCUS - Using the new component
+                ================================================================ */}
+            <AreasNeedingFocus data={d} />
 
             <div className="last-updated">
               Last Updated: {d.timestamp ? new Date(d.timestamp).toLocaleString() : 'N/A'} | {d.fromCache ? `Cache age: ${d.cacheAge || 0} minutes` : 'Live data'}
