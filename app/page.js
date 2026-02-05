@@ -982,7 +982,7 @@ export default function Dashboard() {
         <div className="header-left">
           <img src="/Logo.png" alt="SLP Alaska Logo" style={{height: '60px', marginRight: '15px'}} />
           <div>
-            <h1>Predictive Safety Analytics</h1>
+            <h1>Powered by Predictive Safety Analytics™</h1>
             <div className="header-subtitle">Real-Time Leading & Lagging Indicators</div>
           </div>
         </div>
@@ -1366,14 +1366,12 @@ export default function Dashboard() {
                   </div>
                   <div className="metrics-grid">
                     <div className="metric"><div className="metric-label">Confined Space</div><div className="metric-value purple">{d.lsrAuditCounts?.confinedSpace || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Hot Work</div><div className="metric-value purple">{d.lsrAuditCounts?.hotWork || 0}</div></div>
                     <div className="metric"><div className="metric-label">Driving</div><div className="metric-value purple">{d.lsrAuditCounts?.driving || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Working at Heights</div><div className="metric-value purple">{d.lsrAuditCounts?.workingAtHeights || 0}</div></div>
                     <div className="metric"><div className="metric-label">Energy Isolation</div><div className="metric-value purple">{d.lsrAuditCounts?.energyIsolation || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Fall Protection</div><div className="metric-value purple">{d.lsrAuditCounts?.fallProtection || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Fall Protection / Heights</div><div className="metric-value purple">{d.lsrAuditCounts?.fallProtection || 0}</div></div>
                     <div className="metric"><div className="metric-label">Lifting Ops</div><div className="metric-value purple">{d.lsrAuditCounts?.liftingOperations || 0}</div></div>
                     <div className="metric"><div className="metric-label">Line of Fire</div><div className="metric-value purple">{d.lsrAuditCounts?.lineOfFire || 0}</div></div>
-                    <div className="metric"><div className="metric-label">Work Permits</div><div className="metric-value purple">{d.lsrAuditCounts?.workPermits || 0}</div></div>
+                    <div className="metric"><div className="metric-label">Work Permits / Hot Work</div><div className="metric-value purple">{d.lsrAuditCounts?.workPermits || 0}</div></div>
                   </div>
                 </div>
               </div>
