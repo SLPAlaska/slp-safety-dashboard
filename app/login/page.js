@@ -144,7 +144,7 @@ export default function LoginPage() {
             fontWeight: 700, 
             margin: '0 0 4px 0' 
           }}>
-            Predictive Safety Analytics™
+            Powered by Predictive Safety Analytics™
           </h1>
           <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
             Real-Time Leading & Lagging Indicators
