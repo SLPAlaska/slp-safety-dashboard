@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase, getDashboardData } from '../lib/supabase'
+import { getCurrentUser, signOut, getCompanyAccess } from '../lib/auth'
 
 const COMPANIES = ['All', 'A-C Electric', 'AKE-Line', 'Apache Corp.', 'Armstrong Oil & Gas', 'ASRC Energy Services', 'CCI-Industrial', 'Chosen Construction', 'CINGSA', 'Coho Enterprises', 'Conam Construction', 'ConocoPhillips', 'Five Star Oilfield Services', 'Fox Energy Services', 'G.A. West', 'GBR Equipment', 'GLM Energy Services', 'Graham Industrial Coatings', 'Harvest Midstream', 'Hilcorp Alaska', 'MagTec Alaska', 'Merkes Builders', 'Nordic-Calista', 'Parker TRS', 'Peninsula Paving', 'Pollard Wireline', 'Ridgeline Oilfield Services', 'Santos', 'Summit Excavation', 'Yellowjacket']
 
@@ -807,6 +808,50 @@ export default function Dashboard() {
   const [year, setYear] = useState(String(currentYear))
   const [company, setCompany] = useState('All')
   const [location, setLocation] = useState('All')
+  
+  // Auth state
+  const [authLoading, setAuthLoading] = useState(true)
+  const [userAccess, setUserAccess] = useState(null) // { company, isAdmin, email }
+  const [userName, setUserName] = useState('')
+
+  // Check auth on mount
+  useEffect(() => {
+    checkAuth()
+    
+    // Listen for auth changes (login/logout)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        window.location.href = '/login'
+      }
+    })
+    
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const checkAuth = async () => {
+    const result = await getCurrentUser()
+    
+    if (!result || !result.authorized) {
+      // Not logged in or not authorized → redirect to login
+      window.location.href = '/login'
+      return
+    }
+    
+    setUserAccess(result.access)
+    setUserName(result.user.email)
+    
+    // If client user, lock company filter to their company
+    if (!result.access.isAdmin) {
+      setCompany(result.access.company)
+    }
+    
+    setAuthLoading(false)
+  }
+
+  // Companies list - filtered for client users
+  const availableCompanies = userAccess?.isAdmin 
+    ? COMPANIES 
+    : [userAccess?.company].filter(Boolean)
 
   const loadData = async () => {
     setLoading(true)
@@ -902,8 +947,10 @@ export default function Dashboard() {
   }
 
   useEffect(() => {
-    loadData()
-  }, [year, company, location])
+    if (!authLoading && userAccess) {
+      loadData()
+    }
+  }, [year, company, location, authLoading])
 
   const handlePrint = () => {
     window.print()
@@ -914,6 +961,22 @@ export default function Dashboard() {
 
   return (
     <div>
+      {/* Auth Loading */}
+      {authLoading ? (
+        <div style={{ 
+          minHeight: '100vh', 
+          background: '#0f172a', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: '16px'
+        }}>
+          <div className="spinner"></div>
+          <p style={{ color: '#94a3b8', fontSize: '14px' }}>Verifying access...</p>
+        </div>
+      ) : (
+      <>
       {/* Header */}
       <div className="header">
         <div className="header-left">
@@ -930,12 +993,31 @@ export default function Dashboard() {
               {YEARS.map(y => <option key={y} value={y}>{y === 'All' ? 'All Time' : y}</option>)}
             </select>
           </div>
-          <div className="filter-group">
-            <span className="filter-label">Company</span>
-            <select className="filter-select" value={company} onChange={(e) => setCompany(e.target.value)}>
-              {COMPANIES.map(c => <option key={c} value={c}>{c === 'All' ? 'All Companies' : c}</option>)}
-            </select>
-          </div>
+          {userAccess?.isAdmin ? (
+            <div className="filter-group">
+              <span className="filter-label">Company</span>
+              <select className="filter-select" value={company} onChange={(e) => setCompany(e.target.value)}>
+                {COMPANIES.map(c => <option key={c} value={c}>{c === 'All' ? 'All Companies' : c}</option>)}
+              </select>
+            </div>
+          ) : (
+            <div className="filter-group">
+              <span className="filter-label">Company</span>
+              <div style={{ 
+                padding: '6px 12px', 
+                background: '#0f766e', 
+                borderRadius: '6px', 
+                color: '#5eead4', 
+                fontSize: '13px', 
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                🔒 {company}
+              </div>
+            </div>
+          )}
           <div className="filter-group">
             <span className="filter-label">Location</span>
             <select className="filter-select" value={location} onChange={(e) => setLocation(e.target.value)}>
@@ -945,6 +1027,40 @@ export default function Dashboard() {
           <button className="refresh-btn" onClick={loadData}>🔄 Refresh</button>
           <button className="print-btn" onClick={handlePrint}>🖨️ Print</button>
         </div>
+      </div>
+
+      {/* User Bar */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '6px 20px',
+        background: '#1e293b',
+        borderBottom: '1px solid #334155',
+        fontSize: '12px'
+      }}>
+        <div style={{ color: '#64748b' }}>
+          Logged in as <span style={{ color: '#5eead4', fontWeight: 600 }}>{userName}</span>
+          {userAccess?.isAdmin && <span style={{ marginLeft: '8px', padding: '2px 8px', background: '#7c3aed', color: 'white', borderRadius: '10px', fontSize: '10px', fontWeight: 600 }}>ADMIN</span>}
+          {!userAccess?.isAdmin && <span style={{ marginLeft: '8px', color: '#94a3b8' }}>| {company}</span>}
+        </div>
+        <button 
+          onClick={signOut}
+          style={{
+            background: 'none',
+            border: '1px solid #475569',
+            color: '#94a3b8',
+            padding: '4px 12px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '11px',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => { e.target.style.borderColor = '#ef4444'; e.target.style.color = '#ef4444' }}
+          onMouseLeave={(e) => { e.target.style.borderColor = '#475569'; e.target.style.color = '#94a3b8' }}
+        >
+          Sign Out
+        </button>
       </div>
 
       {/* Year Banner */}
@@ -1369,6 +1485,8 @@ export default function Dashboard() {
       <div className="footer">
         Powered by Predictive Safety Analytics™ | © 2026 SLP Alaska
       </div>
+    </>
+    )}
     </div>
   )
 }
