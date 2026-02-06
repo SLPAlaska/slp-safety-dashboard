@@ -982,7 +982,7 @@ export default function Dashboard() {
         <div className="header-left">
           <img src="/Logo.png" alt="SLP Alaska Logo" style={{height: '60px', marginRight: '15px'}} />
           <div>
-            <h1>Powered by Predictive Safety Analytics™</h1>
+            <h1>AnthroSafe™ Powered by Field Driven Data™</h1>
             <div className="header-subtitle">Real-Time Leading & Lagging Indicators</div>
           </div>
         </div>
@@ -1481,7 +1481,7 @@ export default function Dashboard() {
       </div>
 
       <div className="footer">
-        Powered by Predictive Safety Analytics™ | © 2026 SLP Alaska
+        AnthroSafe™ Powered by Field Driven Data™ | © 2026 SLP Alaska
       </div>
     </>
     )}

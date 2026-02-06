@@ -817,7 +817,7 @@ function generateEmailHTML(companyName: string, data: any, dateRange: any, compa
         Please do not reply to this email. For questions, contact <a href="mailto:brian@slpalaska.com">brian@slpalaska.com</a>
       </p>
       <p style="margin-top: 12px; font-size: 10px; color: #64748b;">
-        Powered by Predictive Safety Analytics™ © 2026 SLP Alaska, LLC
+        AnthroSafe™ Powered by Field Driven Data™ © 2026 SLP Alaska, LLC
       </p>
     </div>
   </div>
