@@ -437,7 +437,7 @@ export default function SecureCompanyView() {
 
         {/* Footer */}
         <div style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontSize: '12px', borderTop: '1px solid #334155', marginTop: '20px' }}>
-          <p style={{ margin: 0 }}>AnthroSafe™ Powered by Field Driven Data™ © 2026 SLP Alaska, LLC</p>
+          <p style={{ margin: 0 }}>AnthroSafe™ Field Driven Safety © 2026 SLP Alaska, LLC</p>
           <p style={{ margin: '8px 0 0 0', fontSize: '11px' }}>For questions, contact brian@slpalaska.com</p>
         </div>
       </div>

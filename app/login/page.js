@@ -144,7 +144,7 @@ export default function LoginPage() {
             fontWeight: 700, 
             margin: '0 0 4px 0' 
           }}>
-            AnthroSafe™ Powered by Field Driven Data™
+            AnthroSafe™ Field Driven Safety
           </h1>
           <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
             Real-Time Leading & Lagging Indicators
@@ -459,7 +459,7 @@ export default function LoginPage() {
           color: '#475569', 
           fontSize: '11px' 
         }}>
-          AnthroSafe™ Powered by Field Driven Data™ | © 2026 SLP Alaska, LLC
+          AnthroSafe™ Field Driven Safety | © 2026 SLP Alaska, LLC
         </div>
       </div>
     </div>
