@@ -857,7 +857,11 @@ export default function Dashboard() {
     setLoading(true)
     
     // Load main dashboard data
+    console.log('[PAGE DEBUG] Calling getDashboardData with:', company, location, year)
     const result = await getDashboardData(company, location, year)
+    console.log('[PAGE DEBUG] Result inspections:', result?.totalInspections, 'LSR total:', result?.lsrAuditCounts?.total)
+    console.log('[PAGE DEBUG] Inspection counts:', JSON.stringify(result?.inspectionCounts))
+    console.log('[PAGE DEBUG] LSR counts:', JSON.stringify(result?.lsrAuditCounts))
     setData(result)
     
     // Load TrueCost data
