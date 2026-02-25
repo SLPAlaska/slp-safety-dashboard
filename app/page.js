@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { supabase, getDashboardData } from '../lib/supabase'
 import { getCurrentUser, signOut, getCompanyAccess } from '../lib/auth'
 
-const COMPANIES = ['All', 'A-C Electric', 'AKE-Line', 'Apache Corp.', 'Armstrong Oil & Gas', 'ASRC Energy Services', 'CCI-Industrial', 'Chosen Construction', 'CINGSA', 'Coho Enterprises', 'Conam Construction', 'ConocoPhillips', 'Five Star Oilfield Services', 'Fox Energy Services', 'G.A. West', 'GBR Equipment', 'GLM Energy Services', 'Graham Industrial Coatings', 'Harvest Midstream', 'Hilcorp Alaska', 'MagTec Alaska', 'Merkes Builders', 'Nordic-Calista', 'Parker TRS', 'Peninsula Paving', 'Pollard Wireline', 'Ridgeline Oilfield Services', 'Santos', 'Summit Excavation', 'Yellowjacket']
+const COMPANIES = ['All', 'A-C Electric', 'AKE-Line', 'Apache Corp.', 'Armstrong Oil & Gas', 'ASRC Energy Services', 'CCI-Industrial', 'Chosen Construction', 'CINGSA', 'Coho Enterprises', 'Conam Construction', 'ConocoPhillips', 'Five Star Oilfield Services', 'Fox Energy Services', 'G.A. West', 'GBR Equipment', 'GLM Energy Services', 'Graham Industrial Coatings', 'Harvest Midstream', 'Hilcorp Alaska', 'MagTec Alaska', 'Merkes Builders', 'Narwhal Exploration', 'Nordic-Calista', 'Parker TRS', 'Peninsula Paving', 'Pollard Wireline', 'Ridgeline Oilfield Services', 'Santos', 'Summit Excavation', 'Yellowjacket']
 
 const LOCATIONS = ['All', 'Kenai', 'CIO', 'Beaver Creek', 'Swanson River', 'Ninilchik', 'Nikiski', 'Other Kenai Asset', 'Deadhorse', 'Prudhoe Bay', 'Kuparuk', 'Alpine', 'Willow', 'ENI', 'PIKKA', 'Point Thompson', 'North Star Island', 'Endicott', 'Badami', 'Other North Slope']
 
@@ -35,7 +35,8 @@ const SOURCE_ICONS = {
   'Hazard ID': '⚡',
   'Inspection': '🔧',
   'Corrective Action': '✅',
-  'Property Damage': '💥'
+  'Property Damage': '💥',
+  'Tank Inspection': '🛢️'
 }
 
 // ============================================================================
@@ -556,6 +557,7 @@ function ComplianceDashboard({ data }) {
               <div className="metric"><div className="metric-label">Eyewash</div><div className="metric-value cyan">{data?.inspectionCounts?.eyewash || 0}</div></div>
               <div className="metric"><div className="metric-label">Harness</div><div className="metric-value cyan">{data?.inspectionCounts?.harness || 0}</div></div>
               <div className="metric"><div className="metric-label">Vehicle</div><div className="metric-value cyan">{data?.inspectionCounts?.vehicle || 0}</div></div>
+              <div className="metric"><div className="metric-label">Tank Farm</div><div className="metric-value cyan">{data?.inspectionCounts?.tankFarm || 0}</div></div>
             </div>
           </>
         )}
@@ -1406,16 +1408,74 @@ export default function Dashboard() {
                     <div className="metric"><div className="metric-label">Chain Hoist</div><div className="metric-value cyan">{d.inspectionCounts?.chainHoist || 0}</div></div>
                   </div>
                   <div style={{fontSize: '10px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase'}}>Vehicles & Equipment</div>
-                  <div className="metrics-grid">
+                  <div className="metrics-grid" style={{marginBottom: '10px'}}>
                     <div className="metric"><div className="metric-label">Vehicles</div><div className="metric-value cyan">{d.inspectionCounts?.vehicle || 0}</div></div>
                     <div className="metric"><div className="metric-label">Forklifts</div><div className="metric-value cyan">{d.inspectionCounts?.forklift || 0}</div></div>
                     <div className="metric"><div className="metric-label">Cranes</div><div className="metric-value cyan">{d.inspectionCounts?.crane || 0}</div></div>
                     <div className="metric"><div className="metric-label">Heavy Equip</div><div className="metric-value cyan">{d.inspectionCounts?.heavyEquip || 0}</div></div>
                     <div className="metric"><div className="metric-label">Scaffolds</div><div className="metric-value cyan">{d.inspectionCounts?.scaffold || 0}</div></div>
                   </div>
+                  <div style={{fontSize: '10px', color: '#64748b', marginBottom: '8px', textTransform: 'uppercase'}}>Containment (ADEC)</div>
+                  <div className="metrics-grid">
+                    <div className="metric"><div className="metric-label">Tank Farm</div><div className="metric-value cyan">{d.inspectionCounts?.tankFarm || 0}</div></div>
+                  </div>
                 </div>
               </div>
             </div>
+
+            {/* Tank Farm Containment Compliance Panel */}
+            {(d.tankFarmMetrics?.totalInspections > 0 || d.inspectionCounts?.tankFarm > 0) && (
+              <div className="panel" style={{ marginTop: '16px', marginBottom: '4px' }}>
+                <div className="panel-header" style={{ background: 'linear-gradient(135deg, #78350f 0%, #b45309 100%)' }}>
+                  🛢️ Tank Farm Containment Compliance — ADEC 18 AAC 75.075
+                </div>
+                <div className="panel-content">
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                    <div style={{ textAlign: 'center', padding: '12px', background: '#0f172a', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 700, color: '#f59e0b' }}>{d.tankFarmMetrics?.totalInspections || 0}</div>
+                      <div style={{ fontSize: '9px', color: '#94a3b8', textTransform: 'uppercase' }}>Weekly Inspections</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '12px', background: '#0f172a', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 700, color: d.tankFarmMetrics?.satisfactoryRate >= 90 ? '#22c55e' : d.tankFarmMetrics?.satisfactoryRate >= 70 ? '#eab308' : '#ef4444' }}>
+                        {d.tankFarmMetrics?.satisfactoryRate || 0}%
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#94a3b8', textTransform: 'uppercase' }}>Satisfactory Rate</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '12px', background: '#0f172a', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 700, color: d.tankFarmMetrics?.inspectionsWithDeficiencies > 0 ? '#ef4444' : '#22c55e' }}>
+                        {d.tankFarmMetrics?.inspectionsWithDeficiencies || 0}
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#94a3b8', textTransform: 'uppercase' }}>With Deficiencies</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '12px', background: '#0f172a', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 700, color: '#22d3ee' }}>
+                        {d.tankFarmMetrics?.deficiencyRate || 0}%
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#94a3b8', textTransform: 'uppercase' }}>Deficiency Rate</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '12px', background: '#0f172a', borderRadius: '8px' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 700, color: '#a78bfa' }}>
+                        {d.tankFarmMetrics?.uniqueTankFarms || 0}
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#94a3b8', textTransform: 'uppercase' }}>Tank Farms Tracked</div>
+                    </div>
+                    <div style={{ textAlign: 'center', padding: '12px', background: d.tankFarmMetrics?.sheenEvents > 0 ? '#7f1d1d' : '#0f172a', borderRadius: '8px', border: d.tankFarmMetrics?.sheenEvents > 0 ? '2px solid #dc2626' : 'none' }}>
+                      <div style={{ fontSize: '28px', fontWeight: 700, color: d.tankFarmMetrics?.sheenEvents > 0 ? '#fca5a5' : '#22c55e' }}>
+                        {d.tankFarmMetrics?.sheenEvents || 0}
+                      </div>
+                      <div style={{ fontSize: '9px', color: d.tankFarmMetrics?.sheenEvents > 0 ? '#fca5a5' : '#94a3b8', textTransform: 'uppercase' }}>
+                        {d.tankFarmMetrics?.sheenEvents > 0 ? '⚠️ Sheen Events' : 'Sheen Events'}
+                      </div>
+                    </div>
+                  </div>
+                  {d.tankFarmMetrics?.sheenEvents > 0 && (
+                    <div style={{ background: '#7f1d1d', border: '1px solid #dc2626', borderRadius: '8px', padding: '10px 14px', fontSize: '12px', color: '#fca5a5' }}>
+                      🚨 <strong>ADEC Regulatory Alert:</strong> {d.tankFarmMetrics.sheenEvents} sheen event(s) detected during containment drainage. Sheen presence requires immediate ADEC notification per 18 AAC 75.075(d). Water with visible sheen must not be discharged.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* ================================================================
                 ADVANCED ANALYTICS - Predictive Modeling & Risk Assessment
