@@ -401,21 +401,43 @@ function SIFPotentialPredictor({ data }) {
     const factors = []
     const recommendations = []
     
+    // Energy exposure — only flag if UNCONTROLLED (high count + weak controls)
+    // Having energy observations is normal. The risk is when controls are inadequate.
     const energyTypes = data?.energySourceMetrics?.byEnergyType || {}
-    const highEnergy = ['Gravity', 'Electrical', 'Pressure', 'Mechanical']
-    highEnergy.forEach(type => {
-      if ((energyTypes[type] || 0) > 10) { score += 15; factors.push(`High ${type} energy exposure`) }
-    })
-    
     const controlScore = data?.energySourceMetrics?.controlHierarchyScore || 50
-    if (controlScore < 40) { score += 20; factors.push('Weak control hierarchy'); recommendations.push({ priority: 'High', action: 'Upgrade to engineering controls' }) }
+    const highEnergy = ['Gravity', 'Electrical', 'Pressure', 'Mechanical']
+    const highEnergyCount = highEnergy.filter(type => (energyTypes[type] || 0) > 10).length
     
+    // Only add energy risk if controls are also weak
+    if (highEnergyCount > 0 && controlScore < 30) {
+      score += 10 + (highEnergyCount * 3)  // Max 22 instead of 60
+      factors.push(`${highEnergyCount} high-energy categories with weak controls`)
+      recommendations.push({ priority: 'High', action: 'Upgrade to engineering controls' })
+    } else if (highEnergyCount >= 3 && controlScore < 50) {
+      score += 8
+      factors.push('Multiple energy exposures — monitor control effectiveness')
+    }
+    
+    // Control hierarchy — scaled, not all-or-nothing
+    if (controlScore < 25) { score += 15; factors.push('Poor control hierarchy (over-reliant on PPE/admin)') }
+    else if (controlScore < 40) { score += 8; factors.push('Control hierarchy below target') }
+    
+    // SIF-potential events — the most meaningful indicator
     const sifCount = data?.sifMetrics?.sifPotentialCount || 0
-    if (sifCount > 5) { score += 25; factors.push(`${sifCount} SIF-potential events`) }
-    else if (sifCount > 2) { score += 15; factors.push(`${sifCount} SIF-potential events`) }
+    if (sifCount > 5) { score += 20; factors.push(`${sifCount} SIF-potential events — elevated`) }
+    else if (sifCount > 2) { score += 10; factors.push(`${sifCount} SIF-potential events identified`) }
+    else if (sifCount > 0) { score += 3; factors.push(`${sifCount} SIF-potential event(s) — within normal range`) }
     
+    // LSR compliance gaps — scaled
     const lsrIssues = data?.areasNeedingFocus?.filter(a => a.source === 'LSR Audit') || []
-    if (lsrIssues.length > 3) { score += 20; factors.push(`${lsrIssues.length} LSR compliance gaps`); recommendations.push({ priority: 'Critical', action: 'Address Life-Saving Rule violations' }) }
+    if (lsrIssues.length > 6) { score += 15; factors.push(`${lsrIssues.length} LSR compliance gaps — critical`); recommendations.push({ priority: 'Critical', action: 'Address Life-Saving Rule violations' }) }
+    else if (lsrIssues.length > 3) { score += 8; factors.push(`${lsrIssues.length} LSR compliance gaps`) }
+    else if (lsrIssues.length > 0) { score += 3 }
+    
+    // SIF actual rate — if actual SIF events occurred
+    const sifRate = data?.sifMetrics?.sifPotentialRate || 0
+    if (sifRate > 25) { score += 15; factors.push('SIF potential rate above 25%') }
+    else if (sifRate > 15) { score += 5 }
     
     return { score: Math.min(100, score), factors, recommendations }
   }
