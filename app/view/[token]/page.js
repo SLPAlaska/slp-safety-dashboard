@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { supabase, getDashboardData } from '@/lib/supabase';
+// (data access removed — all reads go through /api/dashboard-metrics)
 
 // ============================================================================
 // SecureCompanyView
@@ -28,38 +28,17 @@ export default function SecureCompanyView() {
       }
 
       try {
-        // 1. Validate token, resolve company
-        const { data: tokenData, error: tokenError } = await supabase
-          .from('company_view_tokens')
-          .select('company_name, is_active')
-          .eq('token', token)
-          .single();
-
-        if (tokenError || !tokenData) {
-          setError('Invalid or expired access link');
+        // Token validation, access stamping, and metrics all happen
+        // server-side in /api/dashboard-metrics (service role).
+        const res = await fetch('/api/dashboard-metrics?token=' + encodeURIComponent(token));
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(j.error || 'Invalid or expired access link');
           setLoading(false);
           return;
         }
-
-        if (!tokenData.is_active) {
-          setError('This access link has been deactivated');
-          setLoading(false);
-          return;
-        }
-
-        setCompanyName(tokenData.company_name);
-
-        // 2. Stamp last-access (non-blocking)
-        supabase
-          .from('company_view_tokens')
-          .update({ last_accessed: new Date().toISOString() })
-          .eq('token', token)
-          .then(() => {});
-
-        // 3. Pull metrics via the same function the portal Dashboard uses.
-        //    'All' filters match the portal default — full company, all locations, all years.
-        const dashData = await getDashboardData(tokenData.company_name, 'All', 'All');
-        setData(dashData);
+        setCompanyName(j.company);
+        setData(j.data);
         setLoading(false);
       } catch (err) {
         console.error('Error loading dashboard:', err);

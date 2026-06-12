@@ -1,7 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase, getDashboardData } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
+
+// All metrics now come from the server route (service role) — the browser
+// holds no direct database read access.
+async function fetchMetrics(params) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const qs = new URLSearchParams(params).toString()
+  const res = await fetch('/api/dashboard-metrics?' + qs, {
+    headers: { Authorization: 'Bearer ' + (session?.access_token || '') }
+  })
+  const j = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(j.error || 'Metrics fetch failed (' + res.status + ')')
+  return j
+}
 import { getCurrentUser, signOut, getCompanyAccess } from '../lib/auth'
 
 const COMPANIES = ['All', 'A-C Electric', 'AKE-Line', 'Apache Corp.', 'Armstrong Oil & Gas', 'ASRC Energy Services', 'CCI-Industrial', 'Chosen Construction', 'CINGSA', 'Coho Enterprises', 'Conam Construction', 'ConocoPhillips', 'Five Star Oilfield Services', 'Fox Energy Services', 'G.A. West', 'GBR Equipment', 'GLM Energy Services', 'Graham Industrial Coatings', 'Harvest Midstream', 'Hilcorp Alaska', 'MagTec Alaska', 'Merkes Builders', 'Narwhal Exploration', 'Nordic-Calista', 'Parker TRS', 'Peninsula Paving', 'Pollard Wireline', 'Ridgeline Oilfield Services', 'Santos', 'Summit Excavation', 'Yellowjacket']
@@ -880,9 +893,8 @@ export default function Dashboard() {
   const loadData = async () => {
     setLoading(true)
     
-    // Load main dashboard data
-    console.log('[PAGE DEBUG] Calling getDashboardData with:', company, location, year)
-    const result = await getDashboardData(company, location, year)
+    // Load main dashboard data (server route)
+    const result = (await fetchMetrics({ company, location, year })).data
     console.log('[PAGE DEBUG] Result inspections:', result?.totalInspections, 'LSR total:', result?.lsrAuditCounts?.total)
     console.log('[PAGE DEBUG] Inspection counts:', JSON.stringify(result?.inspectionCounts))
     console.log('[PAGE DEBUG] LSR counts:', JSON.stringify(result?.lsrAuditCounts))
@@ -896,38 +908,8 @@ export default function Dashboard() {
 
   const loadTrueCostData = async () => {
     try {
-      // Build query for incident_costs
-      let query = supabase
-        .from('incident_costs')
-        .select(`
-          total_all_costs,
-          total_direct_costs,
-          total_indirect_costs,
-          entry_date,
-          incident_id,
-          incidents!inner(company_name, location_name, incident_date)
-        `)
-
-      // Apply filters
-      if (company !== 'All') {
-        query = query.eq('incidents.company_name', company)
-      }
-      if (location !== 'All') {
-        query = query.eq('incidents.location_name', location)
-      }
-      if (year !== 'All') {
-        const startDate = `${year}-01-01`
-        const endDate = `${year}-12-31`
-        query = query.gte('incidents.incident_date', startDate).lte('incidents.incident_date', endDate)
-      }
-
-      const { data: costs, error } = await query
-
-      if (error) {
-        console.error('Error loading TrueCost data:', error)
-        setTrueCostData({ total: 0, average: 0, monthlyTrend: [] })
-        return
-      }
+      // TrueCost rows from the server route
+      const costs = (await fetchMetrics({ section: 'truecost', company, location, year })).rows || []
 
       // Calculate totals
       const totalCost = costs.reduce((sum, item) => sum + (parseFloat(item.total_all_costs) || 0), 0)
