@@ -1183,6 +1183,14 @@ export default function Dashboard() {
                 <div className="score-detail">More = better culture</div>
               </div>
 
+              <div className={`score-card safe`}>
+                <div className="score-label">🎓 Training Completions</div>
+                <div className={`score-value ${(d.trainingMetrics?.completions || 0) > 0 ? 'good' : 'neutral'}`}>
+                  {d.trainingMetrics?.completions || 0}
+                </div>
+                <div className="score-detail">{d.trainingMetrics?.workers || 0} workers · {d.trainingMetrics?.last30 || 0} in 30d</div>
+              </div>
+
               <div className={`score-card ${d.aging?.over30Days > 0 ? 'danger' : 'safe'}`}>
                 <div className="score-label">Open Items</div>
                 <div className={`score-value ${(d.laggingIndicators?.sailOpen + d.laggingIndicators?.openIncidents) === 0 ? 'good' : 'warning'}`}>

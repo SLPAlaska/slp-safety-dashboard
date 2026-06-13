@@ -201,6 +201,12 @@ export default function SecureCompanyView() {
             detail={`${aging.over30Days || 0} > 30d`}
             color={(aging.avgDaysOpen || 0) > 30 ? '#ef4444' : (aging.avgDaysOpen || 0) > 14 ? '#eab308' : '#22c55e'}
           />
+          <ScoreCard
+            label="🎓 Training Completions"
+            value={data.trainingMetrics?.completions ?? 0}
+            detail={`${data.trainingMetrics?.workers || 0} workers trained`}
+            color={(data.trainingMetrics?.completions || 0) > 0 ? '#22c55e' : '#eab308'}
+          />
         </div>
 
         {/* Leading / Lagging Panels */}
@@ -215,6 +221,7 @@ export default function SecureCompanyView() {
               <MetricItem label="HSE Contacts" value={leading.hseContacts || 0} color="#22c55e" />
               <MetricItem label="Toolbox Talks" value={leading.toolboxMeetings || 0} color="#22c55e" />
               <MetricItem label="Safety Meetings" value={leading.safetyMeetings || 0} color="#22c55e" />
+              <MetricItem label="Training Completions" value={data.trainingMetrics?.completions || 0} color="#22c55e" />
             </div>
           </Panel>
 
