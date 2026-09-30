@@ -160,7 +160,7 @@ export default function SecureCompanyView() {
           marginBottom: '20px'
         }}>
           <ScoreCard
-            label="Safety Culture Index"
+            label="Leading Culture Score"
             value={data.safetyCultureIndex ?? 0}
             detail="0–100"
             color={
@@ -169,7 +169,7 @@ export default function SecureCompanyView() {
             }
           />
           <ScoreCard
-            label="Predictive Risk"
+            label="Risk Load"
             value={data.predictiveRiskScore ?? 0}
             detail="Lower is better"
             color={
@@ -184,8 +184,8 @@ export default function SecureCompanyView() {
             color={parseFloat(safeRatioDisplay) >= 5 ? '#22c55e' : parseFloat(safeRatioDisplay) >= 2 ? '#eab308' : '#ef4444'}
           />
           <ScoreCard
-            label="Job Stop Rate"
-            value={`${bbs.jobStopRate || 0}%`}
+            label="Job Stop Rate (of at-risk)"
+            value={bbs.jobStop?.state === 'none-yet' ? 'None yet' : `${bbs.jobStopRate || 0}%`}
             detail={`${bbs.jobStops || 0} stops`}
             color={(bbs.jobStopRate || 0) >= 50 ? '#22c55e' : '#f97316'}
           />

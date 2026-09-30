@@ -16,6 +16,7 @@ async function fetchMetrics(params) {
   return j
 }
 import { getCurrentUser, signOut, getCompanyAccess } from '../lib/auth'
+import { riskBand, trueCostDisplay, JOB_STOP_ENCOURAGEMENT } from '../lib/scoring'
 
 const COMPANIES = ['All', 'A-C Electric', 'Ace Energy Services', 'AKE-Line', 'Apache Corp.', 'Armstrong Oil & Gas', 'ASRC Energy Services', 'CCI-Industrial', 'Chosen Construction', 'CINGSA', 'Coho Enterprises', 'Conam Construction', 'ConocoPhillips', 'Five Star Oilfield Services', 'Fox Energy Services', 'G.A. West', 'GBR Equipment', 'GLM Energy Services', 'Graham Industrial Coatings', 'Harvest Midstream', 'Hilcorp Alaska', 'MagTec Alaska', 'Merkes Builders', 'Narwhal Exploration', 'Nordic-Calista', 'Parker TRS', 'Peninsula Paving', 'Pollard Wireline', 'Ridgeline Oilfield Services', 'Santos', 'Summit Excavation', 'Yellowjacket']
 
@@ -656,7 +657,8 @@ function IncidentRecurrencePanel({ data }) {
 function LeadingIndicatorCascade({ data }) {
   const leading = data?.leadingIndicators || {}
   const totalLeading = (leading.bbsObservations || 0) + (leading.thas || 0) + (leading.safetyMeetings || 0) + (leading.toolboxMeetings || 0) + (leading.hazardIds || 0) + (leading.hseContacts || 0)
-  const totalLagging = (data?.laggingIndicators?.openIncidents || 0) + (data?.laggingIndicators?.closedIncidents || 0)
+  // Same lagging definition as the Lead/Lag card: incidents plus property damage
+  const totalLagging = (data?.laggingIndicators?.openIncidents || 0) + (data?.laggingIndicators?.closedIncidents || 0) + (data?.laggingIndicators?.propertyDamage || 0)
   const ratio = totalLagging > 0 ? Math.round((totalLeading / totalLagging) * 10) / 10 : totalLeading
   const effectiveness = totalLeading + totalLagging > 0 ? Math.round((totalLeading / (totalLeading + totalLagging)) * 100) : 100
   const ratioColor = ratio >= 10 ? '#22c55e' : ratio >= 5 ? '#eab308' : '#ef4444'
@@ -668,7 +670,7 @@ function LeadingIndicatorCascade({ data }) {
       <div className="panel-content">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
           <div style={{ textAlign: 'center', padding: '10px', background: '#0f172a', borderRadius: '6px' }}>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: ratioColor }}>{ratio}:1</div>
+            <div style={{ fontSize: totalLagging > 0 ? '24px' : '14px', fontWeight: 700, color: ratioColor }}>{totalLagging > 0 ? `${ratio}:1` : 'No lagging events'}</div>
             <div style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase' }}>Lead/Lag Ratio</div>
           </div>
           <div style={{ textAlign: 'center', padding: '10px', background: '#0f172a', borderRadius: '6px' }}>
@@ -1102,39 +1104,53 @@ export default function Dashboard() {
             {/* Score Cards - Row 1 */}
             <div className="score-row">
               <div className={`score-card sci`}>
-                <div className="score-label">Safety Culture Index</div>
+                <div className="score-label">Leading Culture Score</div>
                 <div className={`score-value ${d.safetyCultureIndex >= 70 ? 'good' : d.safetyCultureIndex >= 50 ? 'warning' : 'danger'}`}>
                   {d.safetyCultureIndex}
                 </div>
-                <div className="score-detail">Target: 70+</div>
+                <div className="score-detail">Target: 70+ | Ratio, stop work, reporting, follow-through</div>
+                <div className="score-detail">
+                  Outcomes: {d.cultureOutcomes?.incidents || 0} incidents, {d.cultureOutcomes?.openItems || 0} open items
+                </div>
               </div>
 
               <div className={`score-card risk`}>
-                <div className="score-label">Predictive Risk Score</div>
-                <div className={`score-value ${d.predictiveRiskScore <= 30 ? 'good' : d.predictiveRiskScore <= 60 ? 'warning' : 'danger'}`}>
+                <div className="score-label">Risk Load</div>
+                <div className={`score-value ${riskBand(d.predictiveRiskScore).key}`}>
                   {d.predictiveRiskScore}
                 </div>
-                <div className="score-detail">Lower is better</div>
+                <div className="score-detail">Lower is better | Open items, overdue SAIL, SIF, at-risk</div>
               </div>
 
-              {/* 30-Day Risk Forecast */}
-              <div className={`score-card forecast`}>
-                <div className="score-label">🔮 30-Day Forecast</div>
-                <div className={`score-value ${d.riskForecast30Day <= 30 ? 'good' : d.riskForecast30Day <= 60 ? 'warning' : 'danger'}`}>
-                  {d.riskForecast30Day || 0}
+              {/* 30-Day Risk Index (hidden for ranges shorter than 90 days) */}
+              {d.riskIndex?.visible !== false && (
+                <div className={`score-card forecast`}>
+                  <div className="score-label">🔮 30-Day Risk Index</div>
+                  <div className={`score-value ${riskBand(d.riskForecast30Day || 0).key}`}>
+                    {d.riskForecast30Day || 0}
+                  </div>
+                  <div className="score-detail">{riskBand(d.riskForecast30Day || 0).word} | Risk index, not a count of incidents</div>
                 </div>
-                <div className="score-detail">Predicted risk level</div>
-              </div>
+              )}
 
               {/* TrueCost Card */}
               <div className={`score-card truecost`}>
                 <div className="score-label">💰 TrueCost™ Total</div>
-                <div className="score-value" style={{ fontSize: tc?.total >= 1000000 ? '32px' : '40px' }}>
-                  {tc ? formatMoney(tc.total) : '$0'}
-                </div>
-                <div className="score-detail">
-                  {tc?.count || 0} incidents • Avg: {tc ? formatMoney(tc.average) : '$0'}
-                </div>
+                {tc?.count > 0 ? (
+                  <>
+                    <div className="score-value" style={{ fontSize: tc?.total >= 1000000 ? '32px' : '40px' }}>
+                      {formatMoney(tc.total)}
+                    </div>
+                    <div className="score-detail">
+                      {trueCostDisplay({ costed: tc.count, incidents: d.trueCostSummary?.incidentsTotal || 0 }).text} • Avg: {formatMoney(tc.average)}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="score-value" style={{ fontSize: '20px' }}>{trueCostDisplay({}).text}</div>
+                    <div className="score-detail">Costs are entered by hand, so $0 is not the same as no cost</div>
+                  </>
+                )}
               </div>
 
               <div className={`score-card safe`}>
@@ -1142,29 +1158,44 @@ export default function Dashboard() {
                   Safe/At-Risk Ratio
                   <TrendArrow trend={d.trends?.safeRatio} goodDirection="up" />
                 </div>
-                <div className={`score-value ${d.bbsMetrics?.safeRatio >= 5 ? 'good' : d.bbsMetrics?.safeRatio >= 2 ? 'warning' : 'danger'}`}>
-                  {d.bbsMetrics?.safeRatio || 0}:1
-                </div>
-                <div className="score-detail">Target: 5:1</div>
+                {d.bbsMetrics?.ratioInfo?.hidden ? (
+                  <>
+                    <div className="score-value neutral" style={{ fontSize: '20px' }}>Not enough observations yet</div>
+                    <div className="score-detail">{d.bbsMetrics.ratioInfo.observations} observations (ratio shows at 10 or more)</div>
+                  </>
+                ) : (
+                  <>
+                    <div className={`score-value ${d.bbsMetrics?.safeRatio >= 5 ? 'good' : d.bbsMetrics?.safeRatio >= 2 ? 'warning' : 'danger'}`}>
+                      {d.bbsMetrics?.safeRatio || 0}:1
+                    </div>
+                    <div className="score-detail">Target: 5:1 | {d.bbsMetrics?.ratioInfo?.observations ?? 0} observations</div>
+                  </>
+                )}
               </div>
 
               <div className={`score-card warning`}>
-                <div className="score-label">Job Stop Rate</div>
-                <div className={`score-value ${d.bbsMetrics?.jobStopRate >= 50 ? 'good' : d.bbsMetrics?.jobStopRate >= 25 ? 'warning' : 'neutral'}`}>
-                  {d.bbsMetrics?.jobStopRate || 0}%
-                </div>
-                <div className="score-detail">{d.bbsMetrics?.jobStops || 0} stops</div>
+                <div className="score-label">Job Stop Rate (of at-risk observations)</div>
+                {d.bbsMetrics?.jobStop?.state === 'none-yet' ? (
+                  <div className="score-value neutral" style={{ fontSize: '20px' }}>None yet</div>
+                ) : (
+                  <div className={`score-value ${d.bbsMetrics?.jobStopRate >= 50 ? 'good' : d.bbsMetrics?.jobStopRate >= 25 ? 'warning' : 'neutral'}`}>
+                    {d.bbsMetrics?.jobStopRate || 0}%
+                  </div>
+                )}
+                <div className="score-detail">{d.bbsMetrics?.jobStops || 0} stops | {JOB_STOP_ENCOURAGEMENT}</div>
               </div>
 
               <div className={`score-card sif`}>
                 <div className="score-label">
-                  ⚠️ SIF Potential Rate
+                  ⚠️ SIF Potential
                   <TrendArrow trend={d.trends?.sifRate} goodDirection="down" />
                 </div>
                 <div className={`score-value ${d.sifMetrics?.sifPotentialRate <= 10 ? 'good' : d.sifMetrics?.sifPotentialRate <= 25 ? 'warning' : 'danger'}`}>
-                  {d.sifMetrics?.sifPotentialRate || 0}%
+                  {d.sifMetrics?.showPercent ? `${d.sifMetrics?.sifPotentialRate || 0}%` : (d.sifMetrics?.sifPotentialCount || 0)}
                 </div>
-                <div className="score-detail">{d.sifMetrics?.sifPotentialCount || 0} of {d.sifMetrics?.totalEvents || 0} events</div>
+                <div className="score-detail">
+                  {d.sifMetrics?.sifPotentialCount || 0} of {d.sifMetrics?.totalEvents || 0} events{d.sifMetrics?.showPercent ? '' : ' (percent shows at 10 or more)'} | Potential serious events found early
+                </div>
               </div>
 
               <div className={`score-card energy`}>
@@ -1176,35 +1207,51 @@ export default function Dashboard() {
               </div>
 
               <div className={`score-card safe`}>
-                <div className="score-label">Near Misses</div>
+                <div className="score-label">Good Catches and Near Misses Reported</div>
                 <div className={`score-value ${d.nearMissMetrics?.totalReported >= 5 ? 'good' : d.nearMissMetrics?.totalReported >= 2 ? 'warning' : 'neutral'}`}>
                   {d.nearMissMetrics?.totalReported || 0}
                 </div>
-                <div className="score-detail">More = better culture</div>
+                <div className="score-detail">More reports means more problems found early</div>
               </div>
 
               <div className={`score-card safe`}>
-                <div className="score-label">🎓 Training Completions</div>
-                <div className={`score-value ${(d.trainingMetrics?.completions || 0) > 0 ? 'good' : 'neutral'}`}>
-                  {d.trainingMetrics?.completions || 0}
-                </div>
-                <div className="score-detail">{d.trainingMetrics?.workers || 0} workers · {d.trainingMetrics?.last30 || 0} in 30d</div>
+                <div className="score-label">🎓 Training Completed</div>
+                {d.trainingMetrics?.progress?.state === 'ok' ? (
+                  <>
+                    <div className={`score-value ${d.trainingMetrics.progress.percent >= 90 ? 'good' : d.trainingMetrics.progress.percent >= 70 ? 'warning' : 'danger'}`}>
+                      {d.trainingMetrics.progress.percent}%
+                    </div>
+                    <div className="score-detail">
+                      {d.trainingMetrics.progress.completed} of {d.trainingMetrics.progress.assigned} assigned | {d.trainingMetrics.progress.pastDue} past due
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="score-value neutral" style={{ fontSize: '20px' }}>None assigned</div>
+                    <div className="score-detail">{d.trainingMetrics?.completions || 0} completions recorded</div>
+                  </>
+                )}
               </div>
 
               <div className={`score-card ${d.aging?.over30Days > 0 ? 'danger' : 'safe'}`}>
-                <div className="score-label">Open Items</div>
+                <div className="score-label">Open Items (follow-through)</div>
                 <div className={`score-value ${(d.laggingIndicators?.sailOpen + d.laggingIndicators?.openIncidents) === 0 ? 'good' : 'warning'}`}>
                   {(d.laggingIndicators?.sailOpen || 0) + (d.laggingIndicators?.openIncidents || 0)}
                 </div>
-                <div className="score-detail">{d.laggingIndicators?.sailOverdue || 0} overdue</div>
+                <div className="score-detail">{d.openItemsInfo?.pastTarget ?? d.laggingIndicators?.sailOverdue ?? 0} past target</div>
+                <div className="score-detail">{d.openItemsInfo?.over30Days ?? d.aging?.over30Days ?? 0} open over 30 days</div>
               </div>
 
               <div className={`score-card leadlag`}>
                 <div className="score-label">📊 Lead/Lag Ratio</div>
-                <div className={`score-value ${d.leadLagRatio >= 10 ? 'good' : d.leadLagRatio >= 5 ? 'warning' : 'danger'}`}>
-                  {d.leadLagRatio || 0}:1
-                </div>
-                <div className="score-detail">Target: 10:1+</div>
+                {d.leadLagInfo?.state === 'no-lagging' ? (
+                  <div className="score-value good" style={{ fontSize: '20px' }}>No lagging events</div>
+                ) : (
+                  <div className={`score-value ${d.leadLagRatio >= 10 ? 'good' : d.leadLagRatio >= 5 ? 'warning' : 'danger'}`}>
+                    {d.leadLagRatio || 0}:1
+                  </div>
+                )}
+                <div className="score-detail">Target: 10:1+ | Lagging = incidents + property damage</div>
               </div>
             </div>
 
@@ -1294,8 +1341,8 @@ export default function Dashboard() {
                 <div className="panel-header sif-header">☠️ SIF Potential (STKY) Analytics</div>
                 <div className="panel-content">
                   <div className="sif-rate-display">
-                    <div className="sif-rate-value">{d.sifMetrics?.sifPotentialRate || 0}%</div>
-                    <div className="sif-rate-label">SIF Potential Rate</div>
+                    <div className="sif-rate-value">{d.sifMetrics?.showPercent ? `${d.sifMetrics?.sifPotentialRate || 0}%` : (d.sifMetrics?.sifPotentialCount || 0)}</div>
+                    <div className="sif-rate-label">{d.sifMetrics?.showPercent ? 'SIF Potential Rate' : 'SIF Potential Events'}</div>
                     <div style={{fontSize: '11px', color: '#94a3b8', marginTop: '4px'}}>{d.sifMetrics?.sifPotentialCount || 0} of {d.sifMetrics?.totalEvents || 0} events had SIF potential</div>
                   </div>
                   <div className="metrics-grid">
@@ -1360,11 +1407,11 @@ export default function Dashboard() {
 
               {/* Near Miss Reporting */}
               <div className="panel">
-                <div className="panel-header">⚠️ Near Miss Reporting</div>
+                <div className="panel-header">⚠️ Good Catch and Near Miss Reporting</div>
                 <div className="panel-content">
                   <div style={{textAlign: 'center', marginBottom: '12px'}}>
                     <div style={{fontSize: '28px', fontWeight: 700, color: '#f59e0b'}}>{d.nearMissMetrics?.totalReported || 0}</div>
-                    <div style={{fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase'}}>Near Misses Reported</div>
+                    <div style={{fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase'}}>Good Catches and Near Misses Reported</div>
                   </div>
                   <div className="metrics-grid">
                     <div className="metric"><div className="metric-label">High-SIF-P</div><div className="metric-value red">{d.nearMissMetrics?.bySeverity?.high || 0}</div></div>
