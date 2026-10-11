@@ -16,6 +16,7 @@ async function fetchMetrics(params) {
   return j
 }
 import { getCurrentUser, signOut, getCompanyAccess } from '../lib/auth'
+import LeadingIndicatorsPanel from './LeadingIndicatorsPanel'
 
 const COMPANIES = ['All', 'A-C Electric', 'Ace Energy Services', 'AKE-Line', 'Apache Corp.', 'Armstrong Oil & Gas', 'ASRC Energy Services', 'CCI-Industrial', 'Chosen Construction', 'CINGSA', 'Coho Enterprises', 'Conam Construction', 'ConocoPhillips', 'Five Star Oilfield Services', 'Fox Energy Services', 'G.A. West', 'GBR Equipment', 'GLM Energy Services', 'Graham Industrial Coatings', 'Harvest Midstream', 'Hilcorp Alaska', 'MagTec Alaska', 'Merkes Builders', 'Narwhal Exploration', 'Nordic-Calista', 'Parker TRS', 'Peninsula Paving', 'Pollard Wireline', 'Ridgeline Oilfield Services', 'Santos', 'Summit Excavation', 'Yellowjacket']
 
@@ -85,7 +86,7 @@ function AreasNeedingFocus({ data }) {
   return (
     <div className="panel" style={{ marginTop: '16px' }}>
       <div className="panel-header" style={{ 
-        background: 'linear-gradient(135deg, #7c2d12 0%, #9a3412 100%)',
+        background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)',
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -140,7 +141,7 @@ function AreasNeedingFocus({ data }) {
                 key={source}
                 onClick={() => setFilter(filter === source ? 'all' : source)}
                 style={{
-                  background: filter === source ? '#f97316' : '#0f172a',
+                  background: filter === source ? '#2d5a87' : '#0f172a',
                   padding: '8px',
                   borderRadius: '6px',
                   cursor: 'pointer',
@@ -153,7 +154,7 @@ function AreasNeedingFocus({ data }) {
                 <div style={{ 
                   fontSize: '18px', 
                   fontWeight: 700, 
-                  color: filter === source ? '#fff' : '#f97316'
+                  color: filter === source ? '#fff' : '#8fb3dc'
                 }}>
                   {count}
                 </div>
@@ -279,7 +280,7 @@ function AreasNeedingFocus({ data }) {
                         {focus.source}
                       </td>
                       <td style={{ 
-                        color: '#f97316', 
+                        color: '#8fb3dc', 
                         fontWeight: 600,
                         fontSize: '11px'
                       }}>
@@ -382,7 +383,7 @@ function InjuryProbabilityGauge({ data }) {
 
   return (
     <div className="panel">
-      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%)' }}>
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' }}>
         🎯 30-Day Injury Probability
       </div>
       <div className="panel-content" style={{ textAlign: 'center' }}>
@@ -461,7 +462,7 @@ function SIFPotentialPredictor({ data }) {
 
   return (
     <div className="panel">
-      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #581c87 0%, #7c3aed 100%)' }}>☠️ SIF Potential Predictor</div>
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' }}>☠️ SIF Potential Predictor</div>
       <div className="panel-content">
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '12px' }}>
           <div style={{ width: '70px', height: '70px', borderRadius: '50%', background: `conic-gradient(${color} ${sif.score * 3.6}deg, #1e293b ${sif.score * 3.6}deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -513,7 +514,7 @@ function LocationRiskHeatMap({ data }) {
 
   return (
     <div className="panel">
-      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #1e40af 100%)' }}>🗺️ Location Risk Heat Map</div>
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' }}>🗺️ Location Risk Heat Map</div>
       <div className="panel-content">
         {locations.length === 0 ? (
           <div style={{ textAlign: 'center', color: '#22c55e', padding: '20px' }}>✅ No high-risk locations identified</div>
@@ -560,7 +561,7 @@ function ComplianceDashboard({ data }) {
 
   return (
     <div className="panel">
-      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #065f46 0%, #059669 100%)' }}>✅ Compliance Dashboard</div>
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' }}>✅ Compliance Dashboard</div>
       <div className="panel-content">
         <div style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
           <button onClick={() => setActiveTab('lsr')} style={{ flex: 1, padding: '6px', border: 'none', borderRadius: '4px', fontSize: '10px', fontWeight: 600, cursor: 'pointer', background: activeTab === 'lsr' ? '#059669' : '#1e293b', color: activeTab === 'lsr' ? '#fff' : '#94a3b8' }}>Life-Saving Rules</button>
@@ -626,7 +627,7 @@ function IncidentRecurrencePanel({ data }) {
 
   return (
     <div className="panel">
-      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #831843 0%, #be185d 100%)' }}>🔄 Recurrence Patterns</div>
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' }}>🔄 Recurrence Patterns</div>
       <div className="panel-content">
         <div style={{ textAlign: 'center', marginBottom: '12px' }}>
           <span style={{ display: 'inline-block', padding: '6px 16px', borderRadius: '16px', background: `${riskColor}22`, color: riskColor, fontSize: '11px', fontWeight: 600 }}>{analysis.risk} Risk</span>
@@ -664,7 +665,7 @@ function LeadingIndicatorCascade({ data }) {
 
   return (
     <div className="panel">
-      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #0f766e 0%, #14b8a6 100%)' }}>📈 Leading Indicator Effectiveness</div>
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' }}>📈 Leading Indicator Effectiveness</div>
       <div className="panel-content">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
           <div style={{ textAlign: 'center', padding: '10px', background: '#0f172a', borderRadius: '6px' }}>
@@ -704,7 +705,7 @@ function RiskForecastTimeline({ data }) {
 
   return (
     <div className="panel">
-      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #0c4a6e 0%, #0284c7 100%)' }}>🔮 Risk Forecast Details</div>
+      <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' }}>🔮 Risk Forecast Details</div>
       <div className="panel-content">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', background: `${color}22`, borderRadius: '8px', border: `1px solid ${color}44`, marginBottom: '12px' }}>
           <div style={{ fontSize: '42px', fontWeight: 700, color, lineHeight: 1 }}>{forecast}</div>
@@ -841,6 +842,9 @@ function TrueCostTrendGraph({ monthlyData }) {
 export default function Dashboard() {
   const [data, setData] = useState(null)
   const [trueCostData, setTrueCostData] = useState(null)
+  const [leading, setLeading] = useState(null)
+  const [leadingLoading, setLeadingLoading] = useState(false)
+  const [leadingError, setLeadingError] = useState(null)
   const [loading, setLoading] = useState(true)
   const [year, setYear] = useState(String(currentYear))
   const [company, setCompany] = useState('All')
@@ -899,11 +903,27 @@ export default function Dashboard() {
     console.log('[PAGE DEBUG] Inspection counts:', JSON.stringify(result?.inspectionCounts))
     console.log('[PAGE DEBUG] LSR counts:', JSON.stringify(result?.lsrAuditCounts))
     setData(result)
-    
+
+    // Leading indicators (own request; a failure here never blanks the dashboard)
+    loadLeading()
+
     // Load TrueCost data
     await loadTrueCostData()
     
     setLoading(false)
+  }
+
+  const loadLeading = async () => {
+    setLeadingLoading(true)
+    setLeadingError(null)
+    try {
+      const j = await fetchMetrics({ section: 'leading', company })
+      setLeading(j.leading || null)
+    } catch (e) {
+      setLeadingError(e.message || String(e))
+    } finally {
+      setLeadingLoading(false)
+    }
   }
 
   const loadTrueCostData = async () => {
@@ -1087,6 +1107,14 @@ export default function Dashboard() {
       {d && <EngagementAlert metrics={d.engagementMetrics} />}
 
       <div className="container">
+        {!loading && (
+          <LeadingIndicatorsPanel
+            leading={leading}
+            loading={leadingLoading && !leading}
+            error={leadingError}
+            onPickCompany={userAccess?.isAdmin ? (c) => setCompany(c) : null}
+          />
+        )}
         {loading ? (
           <div className="loading">
             <div className="spinner"></div>
@@ -1210,7 +1238,7 @@ export default function Dashboard() {
 
             {/* TrueCost Trend Graph Panel */}
             <div className="panel" style={{ gridColumn: '1 / -1', marginBottom: '20px' }}>
-              <div className="panel-header" style={{ background: 'linear-gradient(135deg, #991b1b 0%, #b91c1c 100%)' }}>
+              <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' }}>
                 💰 TrueCost™ Monthly Trend
               </div>
               <div className="panel-content">
@@ -1438,7 +1466,7 @@ export default function Dashboard() {
             {/* Tank Farm Containment Compliance Panel */}
             {(d.tankFarmMetrics?.totalInspections > 0 || d.inspectionCounts?.tankFarm > 0) && (
               <div className="panel" style={{ marginTop: '16px', marginBottom: '4px' }}>
-                <div className="panel-header" style={{ background: 'linear-gradient(135deg, #78350f 0%, #b45309 100%)' }}>
+                <div className="panel-header" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%)' }}>
                   🛢️ Tank Farm Containment Compliance — ADEC 18 AAC 75.075
                 </div>
                 <div className="panel-content">

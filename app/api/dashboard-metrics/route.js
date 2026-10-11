@@ -17,11 +17,13 @@
 // Modes:
 //   default            → { company, data: getDashboardData(...) }
 //   ?section=truecost  → { company, rows: incident_costs join incidents }
+//   ?section=leading   → { company, leading: lib/leading-indicators (30d vs prior 30d, signals) }
 // ============================================================================
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getDashboardData } from '@/lib/supabase';
 import { getCompanyAccess } from '@/lib/auth';
+import { getLeadingIndicators } from '@/lib/leading-indicators';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -104,6 +106,10 @@ export async function GET(request) {
 
   // ---------------- DATA ----------------
   try {
+    if (section === 'leading') {
+      const leading = await getLeadingIndicators(adminClient(), company);
+      return NextResponse.json({ company, leading });
+    }
     if (section === 'truecost') {
       const admin = adminClient();
       let query = admin
